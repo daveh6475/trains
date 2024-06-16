@@ -6,3 +6,5 @@ config.json
 *.DS_Store
 .DS_Store
 src/.DS_Store
+.venv/*
+.vscode/*
