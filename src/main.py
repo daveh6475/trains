@@ -3,22 +3,22 @@ import sys
 import time
 import json
 
-from datetime import timedelta
-from timeloop import Timeloop
 from datetime import datetime
 from PIL import ImageFont, Image
+from PIL.ImageFont import FreeTypeFont
 from helpers import get_device
-from trains import loadDeparturesForStation, loadDestinationsForDeparture, loadDeparturesForStationRTT, loadDestinationsForDepartureRTT
+from trains import loadDeparturesForStationRTT, loadDestinationsForDepartureRTT, ProcessedDepartures, CallingPoints
 from luma.core.render import canvas
 from luma.core.virtual import viewport, snapshot
 from open import isRun
+from typing import Any
 
-def loadConfig():
+def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
         data = json.load(jsonConfig)
         return data
 
-def makeFont(name, size):
+def makeFont(name: str, size: int) -> FreeTypeFont:
     font_path = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
@@ -28,58 +28,82 @@ def makeFont(name, size):
     )
     return ImageFont.truetype(font_path, size)
 
+def format_hhmm(timestamp: str) -> str:
+    return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
-def renderDestination(departure, font):
-    departureTime = departure["aimed_departure_time"]
-    destinationName = departure["destination_name"]
 
-    def drawText(draw, width, height):
-        train = f"{departureTime}  {destinationName}"
+def renderDestination(departure: ProcessedDepartures, font: FreeTypeFont, n: int = 0):
+    departureTime = departure.aimed_departure_time
+    destinationName = departure.destination_name
+
+    def drawText(draw, width: int, height: int):
+
+        ordinal = ""
+        if n == 1:
+            ordinal = "1st "
+        elif n == 2:
+            ordinal = "2nd "
+        elif n == 3:
+            ordinal = "3rd "
+        elif n == 4:
+            ordinal = "4th "
+
+        train = f"{ordinal}{departureTime}  {destinationName}"
         draw.text((0, 0), text=train, font=font, fill="yellow")
 
     return drawText
 
 
-def renderServiceStatus(departure):
-    def drawText(draw, width, height):
+def renderServiceStatus(departure: ProcessedDepartures):
+    def drawText(draw, width: int, height: int):
         train = ""
 
-        if departure["status"] == "CANCELLED" or departure["status"] == "CANCELLED_CALL" or departure["status"] == "CANCELLED_PASS":
+        if departure.status == "CANCELLED" or departure.status == "CANCELLED_CALL" or departure.status == "CANCELLED_PASS":
             train = "Cancelled"
         else:
-            if isinstance(departure["expected_departure_time"], str):
-                train = 'Exp '+departure["expected_departure_time"]
+            if isinstance(departure.expected_departure_time, str):
+                train = 'Exp '+ departure.expected_departure_time
 
-            if departure["aimed_departure_time"] == departure["expected_departure_time"]:
+            if departure.expected_departure_time == departure.expected_departure_time:
                 train = "On time"
 
-        w, h = draw.textsize(train, font)
+        w = int(draw.textlength(train, font))
         draw.text((width-w,0), text=train, font=font, fill="yellow")
     return drawText
 
-def renderPlatform(departure):
-    def drawText(draw, width, height):
-        if departure["mode"] == "bus":
+def renderPlatform(departure: ProcessedDepartures):
+    def drawText(draw, width: int, height: int):
+        if departure.mode == "bus":
             draw.text((0, 0), text="BUS", font=font, fill="yellow")
         else:
-            if isinstance(departure["platform"], str):
-                draw.text((0, 0), text="Plat "+departure["platform"], font=font, fill="yellow")
+            if isinstance(departure.platform, str):
+                draw.text((0, 0), text="Plat " + departure.platform, font=font, fill="yellow")
     return drawText
 
-def renderCallingAt(draw, width, height):
+def renderCallingAt(draw, width: int, height: int):
     stations = "Calling at:"
     draw.text((0, 0), text=stations, font=font, fill="yellow")
 
 
-def renderStations(stations):
-    def drawText(draw, width, height):
+def renderStations(stations: list[CallingPoints], toc: str):
+
+    if len(stations) == 1:
+         calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
+        
+    else:
+        calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
+        calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
+
+    calling_at_str += f"    (A {toc} service.)"
+
+    def drawText(draw, width: int, height: int):
         global stationRenderCount, pauseCount
 
-        if(len(stations) == stationRenderCount - 5):
+        if(len(calling_at_str) == stationRenderCount - 5):
             stationRenderCount = 0
 
         draw.text(
-            (0, 0), text=stations[stationRenderCount:], width=width, font=font, fill="yellow")
+            (0, 0), text=calling_at_str[stationRenderCount:], width=width, font=font, fill="yellow")
 
         if stationRenderCount == 0 and pauseCount < 8:
             pauseCount += 1
@@ -90,12 +114,12 @@ def renderStations(stations):
 
     return drawText
 
-def renderTime(draw, width, height):
+def renderTime(draw, width: int, height: int):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
 
-    w1, h1 = draw.textsize("{}:{}".format(hour, minute), fontBoldLarge)
-    w2, h2 = draw.textsize(":00", fontBoldTall)
+    w1 = int(draw.textlength("{}:{}".format(hour, minute), fontBoldLarge))
+    w2 = int(draw.textlength(":00", fontBoldTall))
 
     draw.text(((width - w1 - w2) / 2, 0), text="{}:{}".format(hour, minute),
               font=fontBoldLarge, fill="yellow")
@@ -103,77 +127,61 @@ def renderTime(draw, width, height):
               font=fontBoldTall, fill="yellow")
 
 
-def renderWelcomeTo(xOffset):
-    def drawText(draw, width, height):
+def renderWelcomeTo(xOffset: int):
+    def drawText(draw, width: int, height: int):
         text = "Welcome to"
         draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return drawText
 
 
-def renderDepartureStation(departureStation, xOffset):
-    def draw(draw, width, height):
+def renderDepartureStation(departureStation: str, xOffset: int):
+    def draw(draw, width: int, height: int):
         text = departureStation
         draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return draw
 
 
-def renderDots(draw, width, height):
+def renderDots(draw, width: int, height: int):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
 
-def loadData(apiConfig, journeyConfig):
+def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[list[ProcessedDepartures], list[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if isRun(runHours[0], runHours[1]) == False:
-        return False, False, journeyConfig['outOfHoursName']
-
-    departures, stationName = loadDeparturesForStation(
-        journeyConfig, apiConfig["appId"], apiConfig["apiKey"])
-
-    if len(departures) == 0:
-        return False, False, stationName
-
-    firstDepartureDestinations = loadDestinationsForDeparture(
-        journeyConfig, departures[0]["service_timetable"]["id"])
-
-    return departures, firstDepartureDestinations, stationName
-
-def loadDataRTT(apiConfig, journeyConfig):
-    runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if isRun(runHours[0], runHours[1]) == False:
-        return False, False, journeyConfig['outOfHoursName']
+        return [], [], journeyConfig['outOfHoursName']
 
     departures, stationName = loadDeparturesForStationRTT(
         journeyConfig, apiConfig["username"], apiConfig["password"])
 
     if len(departures) == 0:
-        return False, False, journeyConfig['outOfHoursName']
+        return [], [], journeyConfig['outOfHoursName']
 
     firstDepartureDestinations = loadDestinationsForDepartureRTT(
-        journeyConfig, apiConfig["username"], apiConfig["password"], departures[0]["time_table_url"])    
+        journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)    
 
     #return False, False, journeyConfig['outOfHoursName']
     return departures, firstDepartureDestinations, stationName
 
-def drawBlankSignage(device, width, height, departureStation):
+def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
 
     with canvas(device) as draw:
-        welcomeSize = draw.textsize("Welcome to", fontBold)
+        welcomeSizeX = int(draw.textlength("Welcome to", fontBold))
 
     with canvas(device) as draw:
-        stationSize = draw.textsize(departureStation, fontBold)
+        stationSizeX = int(draw.textlength(departureStation, fontBold))
 
     device.clear()
 
     virtualViewport = viewport(device, width=width, height=height)
 
     rowOne = snapshot(width, 10, renderWelcomeTo(
-        (width - welcomeSize[0]) / 2), interval=10)
+        int((width - welcomeSizeX) / 2)), interval=10)
     rowTwo = snapshot(width, 10, renderDepartureStation(
-        departureStation, (width - stationSize[0]) / 2), interval=10)
+        departureStation, int((width - stationSizeX) / 2)), interval=10)
     rowThree = snapshot(width, 10, renderDots, interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=1)
 
@@ -189,7 +197,7 @@ def drawBlankSignage(device, width, height, departureStation):
     return virtualViewport
 
 
-def drawSignage(device, width, height, data):
+def drawSignage(device, width: int, height: int, data: tuple[list[ProcessedDepartures], list[CallingPoints], str]):
     global stationRenderCount, pauseCount
 
     device.clear()
@@ -197,21 +205,21 @@ def drawSignage(device, width, height, data):
     virtualViewport = viewport(device, width=width, height=height)
 
     status = "Exp 00:00"
-    callingAt = "Calling at:"
+    callingAt = "Calling at: "
 
     departures, firstDepartureDestinations, departureStation = data
 
     with canvas(device) as draw:
-        w, h = draw.textsize(callingAt, font)
+        w = int(draw.textlength(callingAt, font))
 
     callingWidth = w
     width = virtualViewport.width
 
     # First measure the text size
     with canvas(device) as draw:
-        w, h = draw.textsize(status, font)
-        pw, ph = draw.textsize("Plat 88", font)
-
+        w = int(draw.textlength(status, font))
+        pw = int(draw.textlength("Plat 88", font))
+    
     rowOneA = snapshot(
         width - w - pw, 10, renderDestination(departures[0], fontBold), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(
@@ -219,17 +227,17 @@ def drawSignage(device, width, height, data):
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
-                       renderStations(", ".join(firstDepartureDestinations)), interval=0.1)
+                       renderStations(firstDepartureDestinations, departures[0].toc), interval=0.1)
     if(len(departures) > 1):
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
-            departures[1],font), interval=10)
+            departures[1], font, n=2), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(
             departures[1]), interval=1)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
 
     if(len(departures) > 2):
         rowFourA = snapshot(width - w - pw, 10, renderDestination(
-            departures[2],font), interval=10)
+            departures[2], font, n=3), interval=10)
         rowFourB = snapshot(w, 10, renderServiceStatus(
             departures[2]), interval=1)
         rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
@@ -279,10 +287,12 @@ try:
 
     if config["apiMethod"] == 'rtt':
         data = loadDataRTT(config["rttApi"], config["journey"])
+    # else:
+    #     data = loadData(config["transportApi"], config["journey"])      
     else:
-        data = loadData(config["transportApi"], config["journey"])      
+        raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
 
-    if data[0] == False:
+    if len(data[0]) == 0:
         virtual = drawBlankSignage(
             device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
     else:
@@ -296,10 +306,10 @@ try:
         if(timeNow - timeAtStart >= config["refreshTime"]):
             if config["apiMethod"] == 'rtt':
                 data = loadDataRTT(config["rttApi"], config["journey"])
-            else:
-                data = loadData(config["transportApi"], config["journey"])      
+            # else:
+            #     data = loadData(config["transportApi"], config["journey"])      
                 
-            if data[0] == False:
+            if len(data[0]) == 0:
                 virtual = drawBlankSignage(
                     device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
             else:
@@ -315,5 +325,3 @@ except KeyboardInterrupt:
     pass
 except ValueError as err:
     print(f"Error: {err}")
-except KeyError as err:
-    print(f"Error: Please ensure the {err} environment variable is set")

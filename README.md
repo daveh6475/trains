@@ -45,11 +45,9 @@ $ pip3 install -r requirements.txt
 
 Sign up for the [Real Time Trains API](https://api.rtt.io), and get your username and password.
 
-You can still use the old transportAPI (fill in the details and change apiMethod to 'transport') as an alternative but you will either need to have a commercial agreement as the limits on API calls are now so small it is not pratical to use in a real time way. 
-
 Copy `config.sample.json` to `config.json` and complete.
 
-```javascript
+```json
 {
     "journey": {
       "departureStation": "",
@@ -59,12 +57,7 @@ Copy `config.sample.json` to `config.json` and complete.
       }
     },
     "refreshTime": 180,
-    "transportApi": {
-      "appId": "",
-      "apiKey": "",
-      "operatingHours": "0-23"
-    },
-    "rttApi":{
+    "rttApi": {
         "username": "",
         "password": "",
         "operatingHours": "6-23"
@@ -84,6 +77,8 @@ Copy `config.sample.json` to `config.json` and complete.
 
 `stationAbbr` - a list of words and their abbreviations that can be used to shorten station names, useful for small displays. 
 
+`outOfHoursName` - the full name of the station to display when Out of Hours.
+
 ### Real Time Trains API Settings (Default)
 
 `username` - your real time trains username
@@ -92,17 +87,9 @@ Copy `config.sample.json` to `config.json` and complete.
 
 `operating hours` - the range of hours you wish the display to actively request train times, be aware the free tier API has a limit of 1000 calls a day.
 
-### Transport API Settings (DONT USE)
-
-`appId` - your transport api application ID
-
-`apiKey` - your transport api key
-
-`operating hours` - the range of hours you wish the display to actively request train times, be aware the free tier API has a limit of 1000 calls a day.
-
 ### Setting The Live API
 
-`apiMethod` - By default this is set to 'rtt' to use the Real Time Trains API, to chnage to the transport api set this to 'transport' 
+`apiMethod` - By default this is set to 'rtt' to use the Real Time Trains API. Other data sources aren't implemented yet.
 
 ## Running
 
@@ -132,6 +119,6 @@ Chris Hutchinson tweeted a video demo of the original software running on a real
 
 ## Thanks
 
-A big thanks to Chris Hutchinson who originally built this code! He can be found on GitHub at https://github.com/chrishutchinson/
+A big thanks to [Chris Hutchinson](https://github.com/chrishutchinson/) and [Blake](https://github.com/ghostseven) who originally built this code! Their respective GitHub respositories can be found [here](https://github.com/chrishutchinson/train-departure-screen) and [here](https://github.com/ghostseven/UK-Train-Departure-Display).
 
 The fonts used were painstakingly put together by `DanielHartUK` and can be found on GitHub at https://github.com/DanielHartUK/Dot-Matrix-Typeface - A huge thanks for making that resource available!

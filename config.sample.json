@@ -4,15 +4,11 @@
     "destinationStation": null,
     "stationAbbr": {
       "International": "Intl."
-    }
+    },
+    "outOfHoursName": ""
   },
   "refreshTime": 180,
-  "transportApi": {
-    "appId": "",
-    "apiKey": "",
-    "operatingHours": "0-23"
-  },
-  "rttApi":{
+  "rttApi": {
       "username": "",
       "password": "",
       "operatingHours": "6-23"

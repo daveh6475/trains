@@ -60,6 +60,6 @@ def get_device(actual_args=None):
     try:
         device = cmdline.create_device(args)
     except error.Error as e:
-        parser.error(e)
+        parser.error(str(e))
 
     return device
