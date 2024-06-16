@@ -6,12 +6,15 @@ import json
 from datetime import datetime
 from PIL import ImageFont, Image
 from PIL.ImageFont import FreeTypeFont
-from helpers import get_device
+from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
 from trains import loadDeparturesForStationRTT, loadDestinationsForDepartureRTT, ProcessedDepartures, CallingPoints
 from luma.core.render import canvas
 from luma.core.virtual import viewport, snapshot
 from open import isRun
 from typing import Any
+
+DISPLAY_WIDTH = 256
+DISPLAY_HEIGHT = 64
 
 def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
@@ -84,6 +87,17 @@ def renderCallingAt(draw, width: int, height: int):
     stations = "Calling at:"
     draw.text((0, 0), text=stations, font=font, fill="yellow")
 
+def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
+    if len(stations) == 1:
+         calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
+        
+    else:
+        calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
+        calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
+
+    calling_at_str += f"    (A {toc} service.)"
+
+    return calling_at_str
 
 def renderStations(stations: list[CallingPoints], toc: str):
 
@@ -99,18 +113,19 @@ def renderStations(stations: list[CallingPoints], toc: str):
     def drawText(draw, width: int, height: int):
         global stationRenderCount, pauseCount
 
-        if(len(calling_at_str) == stationRenderCount - 5):
+        calling_at_len = int(draw.textlength(calling_at_str, font))
+
+        if calling_at_len == -stationRenderCount - 5:
             stationRenderCount = 0
 
-        draw.text(
-            (0, 0), text=calling_at_str[stationRenderCount:], width=width, font=font, fill="yellow")
+        draw.text((stationRenderCount, 0), text=calling_at_str, font=font, fill="yellow")
 
-        if stationRenderCount == 0 and pauseCount < 8:
+        if stationRenderCount == 0 and pauseCount < 25:
             pauseCount += 1
             stationRenderCount = 0
         else:
             pauseCount = 0
-            stationRenderCount += 1
+            stationRenderCount -= 1
 
     return drawText
 
@@ -227,7 +242,7 @@ def drawSignage(device, width: int, height: int, data: tuple[list[ProcessedDepar
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
-                       renderStations(firstDepartureDestinations, departures[0].toc), interval=0.1)
+                       renderStations(firstDepartureDestinations, departures[0].toc), interval=0.02)
     if(len(departures) > 1):
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
             departures[1], font, n=2), interval=10)
@@ -254,8 +269,32 @@ def drawSignage(device, width: int, height: int, data: tuple[list[ProcessedDepar
     virtualViewport.add_hotspot(rowOneA, (0, 0))
     virtualViewport.add_hotspot(rowOneB, (width - w, 0))
     virtualViewport.add_hotspot(rowOneC, (width - w - pw, 0))
-    virtualViewport.add_hotspot(rowTwoA, (0, 12))
-    virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
+    # virtualViewport.add_hotspot(rowTwoA, (0, 12))
+
+
+    ca = AnimatedObject(device, (0, 12), [RenderText(text="Calling at: ", font=font)])
+
+    # virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
+    stops = AnimatedObject(device, (callingWidth, 12), [RenderText(text=get_stations_string(firstDepartureDestinations, departures[0].toc), font=font)])
+    stops.add_animations(
+        AnimationSequence(
+            sequence=[
+                scroll_left(stops, delay=40),
+                Animation(
+                    obj_start=(stops.start_pos[0], stops.start_pos[1] + stops.height), obj_end=stops.start_pos,
+                    viewport_start=(0, 0), viewport_end=(0, 0)),
+                reset_object(stops)
+            ],
+            interval=0.02
+        )
+    )
+
+    animated_row_two = ObjectRow(
+        [ca, stops], DISPLAY_WIDTH
+    )
+    animated_row_two.add_hotspots(12, virtualViewport)
+
+
     if(len(departures) > 1):
         virtualViewport.add_hotspot(rowThreeA, (0, 24))
         virtualViewport.add_hotspot(rowThreeB, (width - w, 24))
@@ -278,9 +317,6 @@ try:
     fontBoldTall = makeFont("Dot Matrix Bold Tall.ttf", 10)
     fontBoldLarge = makeFont("Dot Matrix Bold.ttf", 20)
 
-    widgetWidth = 256
-    widgetHeight = 64
-
     stationRenderCount = 0
     pauseCount = 0
     loop_count = 0
@@ -294,27 +330,27 @@ try:
 
     if len(data[0]) == 0:
         virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+            device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
     else:
-        virtual = drawSignage(device, width=widgetWidth,
-                              height=widgetHeight, data=data)
+        virtual = drawSignage(device, width=DISPLAY_WIDTH,
+                              height=DISPLAY_HEIGHT, data=data)
 
     timeAtStart = time.time()
     timeNow = time.time()
 
     while True:
-        if(timeNow - timeAtStart >= config["refreshTime"]):
+        if (timeNow - timeAtStart >= config["refreshTime"]):
             if config["apiMethod"] == 'rtt':
                 data = loadDataRTT(config["rttApi"], config["journey"])
             # else:
-            #     data = loadData(config["transportApi"], config["journey"])      
+            #     data = loadData(config["transportApi"], config["journey"])
                 
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
             else:
-                virtual = drawSignage(device, width=widgetWidth,
-                                      height=widgetHeight, data=data)
+                virtual = drawSignage(device, width=DISPLAY_WIDTH,
+                                      height=DISPLAY_HEIGHT, data=data)
 
             timeAtStart = time.time()
 
