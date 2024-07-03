@@ -1,4 +1,5 @@
 import requests
+import json
 from datetime import date
 from dataclasses import dataclass
 from typing import Any
@@ -80,8 +81,11 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
     return translated_departures, departureStation
 
 def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> list[CallingPoints]:
+    print(f"Fetching calling points from URL: {timetableUrl}")  # Debugging line
     r = requests.get(url=timetableUrl, auth=(username, password))
+    print(f"API response status: {r.status_code}")  # Debugging line
     calling_data = r.json()
+    print(f"API response data: {json.dumps(calling_data, indent=4)}")  # Debugging line
 
     index = 0
     for loc in calling_data['locations']:
@@ -94,5 +98,7 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
         calling_at.append(
             CallingPoints(abbrStation(journeyConfig, loc['description']), loc["realtimeArrival"])
         )
+
+    print(f"Calling points processed: {calling_at}")  # Debugging line
 
     return calling_at
