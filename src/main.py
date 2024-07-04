@@ -4,6 +4,9 @@ import time
 import json
 import requests
 import base64
+import cProfile
+import pstats
+import io
 
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
@@ -37,7 +40,6 @@ def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
 def renderDestination(departure: dict, font: FreeTypeFont, n: int = 0):
-    print(departure.keys())  # This will show you all the keys in the first dictionary entry
     departureTime = departure['departureTime']
     destinationName = departure['destination']
 
@@ -218,6 +220,8 @@ def renderDots(draw, width: int, height: int):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
+from datetime import datetime
+
 def loadDataRTT(apiDetails, journey):
     base_url = "https://api.rtt.io/api/v1/json/search/"  # Base URL for search endpoint
     details_base_url = "https://api.rtt.io/api/v1/json/service/"  # Base URL for service details endpoint
@@ -235,7 +239,6 @@ def loadDataRTT(apiDetails, journey):
     url = f"{base_url}{journey['departureStation']}"
     departure_response = requests.get(url, headers=headers)
     departures_data = departure_response.json()
-    print(json.dumps(departures_data, indent=4))
 
     departures = []
     for service in departures_data.get('services', []):
@@ -255,29 +258,30 @@ def loadDataRTT(apiDetails, journey):
             'atocName': service.get('atocName', 'Unknown TOC')
         })
 
-    # Print the departures data for debugging
-    print("Departures Data:", departures)
-
     # Ensure there is at least one departure before fetching details
     first_departure_destinations = []
     if departures:
         # Fetch additional details for the first departure if available
-        first_departure_url = f"{details_base_url}{departures[0]['serviceUid']}"
+        first_departure_date = datetime.strptime(departures[0]['runDate'], "%Y-%m-%d").strftime("%Y/%m/%d")
+        first_departure_url = f"{details_base_url}{departures[0]['serviceUid']}/{first_departure_date}"
         first_departure_response = requests.get(first_departure_url, headers=headers)
         if first_departure_response.status_code == 200:
             first_departure_data = first_departure_response.json()
-            # Print the full response for debugging
-            print("Full API Response for First Departure:", json.dumps(first_departure_data, indent=4))
 
-            for location in first_departure_data.get('locations', []):
-                first_departure_destinations.append({
-                    'station': location['locationName'],
-                    'arrival_time': location.get('gbttBookedArrival', 'Unknown')
-                })
-            # Add print statement for the processed stations
-            print("Processed Stations for First Departure:", first_departure_destinations)
-        else:
-            print(f"Error fetching first departure details: {first_departure_response.status_code} {first_departure_response.text}")
+            # Find the index of the departure station
+            start_index = next(
+                (index for index, loc in enumerate(first_departure_data.get('locations', [])) if loc['crs'] == journey['departureStation']),
+                None
+            )
+
+            if start_index is not None:
+                for location in first_departure_data['locations'][start_index+1:]:
+                    first_departure_destinations.append(
+                        CallingPoints(
+                            station=location['description'],  # Use 'description' instead of 'locationName'
+                            arrival_time=location.get('gbttBookedArrival', 'Unknown')
+                        )
+                    )
     else:
         first_departure_destinations = []
 
@@ -349,14 +353,14 @@ def drawSignage(device, width, height, data):
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
                        renderStations(firstDepartureDestinations, departures[0]['atocName']), interval=0.1)
-    if(len(departures) > 1):
+    if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
             departures[1], font), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(
             departures[1]), interval=1)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
 
-    if(len(departures) > 2):
+    if len(departures) > 2:
         rowFourA = snapshot(width - w - pw, 10, renderDestination(
             departures[2], font), interval=10)
         rowFourB = snapshot(w, 10, renderServiceStatus(
@@ -377,11 +381,11 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowOneC, (width - w - pw, 0))
     virtualViewport.add_hotspot(rowTwoA, (0, 12))
     virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
-    if(len(departures) > 1):
+    if len(departures) > 1:
         virtualViewport.add_hotspot(rowThreeA, (0, 24))
         virtualViewport.add_hotspot(rowThreeB, (width - w, 24))
         virtualViewport.add_hotspot(rowThreeC, (width - w - pw, 24))
-    if(len(departures) > 2):
+    if len(departures) > 2:
         virtualViewport.add_hotspot(rowFourA, (0, 36))
         virtualViewport.add_hotspot(rowFourB, (width - w, 36))
         virtualViewport.add_hotspot(rowFourC, (width - w - pw, 36))
@@ -391,9 +395,6 @@ def drawSignage(device, width, height, data):
 
 try:
     config = loadConfig()
-
-    # Print the loaded config data for debugging
-    print("Config Data:", config)
 
     device = get_device()
     font = makeFont("Dot Matrix Regular.ttf", 10)
@@ -412,9 +413,6 @@ try:
     else:
         raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
 
-    # Print the data loaded from the API for debugging
-    print("Data Loaded from API:", data)
-
     if len(data[0]) == 0:
         virtual = drawBlankSignage(
             device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
@@ -431,9 +429,6 @@ try:
                 data = loadDataRTT(config["rttApi"], config["journey"])
             # else:
             #     data = loadData(config["transportApi"], config["journey"])
-
-            # Print the data loaded from the API for debugging during refresh
-            print("Data Loaded from API (Refresh):", data)
 
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
@@ -453,3 +448,30 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
+
+def main():
+    # Initialize and start your main functionality here
+    device = get_device()
+    width, height = device.width, device.height
+    
+    # Assuming `loadDataRTT` and `drawSignage` are part of your existing functions
+    config = loadConfig()
+    rttApi = config['rttApi']
+    journey = config['journey']
+    
+    data = loadDataRTT(rttApi, journey)
+    if data:
+        drawSignage(device, width, height, data)
+
+# Profile the main function
+if __name__ == '__main__':
+    pr = cProfile.Profile()
+    pr.enable()
+    main()
+    pr.disable()
+    
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
