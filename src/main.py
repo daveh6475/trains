@@ -371,60 +371,28 @@ except ValueError as err:
     print(f"Error: {err}")
 
     #this is debug
-def loadDeparturesForStationRTT(journeyConfig, username, password):
-    if journeyConfig["departureStation"] == "":
-        raise ValueError("Please set the journey.departureStation property in config.json")
+def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
+    print(f"Requesting timetable data from: {timetableUrl}")
+    response = requests.get(url=timetableUrl, auth=(username, password))
+    calling_data = response.json()
+    print(f"Received response: {calling_data}")
 
-    if username == "" or password == "":
-        raise ValueError("Please complete the rttApi section of your config.json file")
+    if 'locations' not in calling_data:
+        print("Error: 'locations' key not found in the response.")
+        return []
 
-    departureStation = journeyConfig["departureStation"]
+    index = 0
+    for loc in calling_data['locations']:
+        if loc['crs'] == journeyConfig["departureStation"]:
+            break
+        index += 1
 
-    print(f"Requesting departures for station: {departureStation}")
-    response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
-    data = response.json()
-    print(f"Received response: {data}")
+    calling_at = []    
+    for loc in calling_data['locations'][index+1:]:
+        calling_at.append(abbrStation(journeyConfig, loc['description']))
 
-    translated_departures = []
-    td = date.today()
+    if len(calling_at) == 1:
+        calling_at[0] = calling_at[0] + ' only.'
 
-    if data.get('services') is None:
-        print("No services found in the response.")
-        return translated_departures, departureStation
+    return calling_at
 
-    for item in data['services'][:5]:
-        uid = item['serviceUid']
-        destination_name = abbrStation(journeyConfig, item['locationDetail']['destination'][0]['description'])
-        
-        dt = item['locationDetail']['gbttBookedDeparture']
-        try:
-            edt = item['locationDetail']['realtimeDeparture']
-        except KeyError:
-            edt = item['locationDetail']['gbttBookedDeparture']
-
-        aimed_departure_time = dt[:2] + ':' + dt[2:]
-        expected_departure_time = edt[:2] + ':' + edt[2:]
-        status = item['locationDetail']['displayAs']
-        mode = item['serviceType']
-        try:
-            platform = item['locationDetail']['platform']
-        except KeyError:
-            platform = ""
-
-        print(f"Processing service UID {uid}: {destination_name} at {aimed_departure_time}")
-
-        timetable_url = f"https://api.rtt.io/api/v1/json/service/{uid}/{td.year}/{td.month:02}/{td.day:02}"
-        calling_at = loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable_url)
-
-        translated_departures.append({
-            'uid': uid,
-            'destination_name': destination_name,
-            'aimed_departure_time': aimed_departure_time,
-            'expected_departure_time': expected_departure_time,
-            'status': status,
-            'mode': mode,
-            'platform': platform,
-            'calling_at': calling_at  # Include calling at information
-        })
-
-    return translated_departures, departureStation
