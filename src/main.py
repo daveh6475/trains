@@ -199,7 +199,7 @@ def loadDataRTT(apiDetails: Dict[str, Any], journey: Dict[str, Any]) -> Tuple[Li
 
     return departures, first_departure_destinations, journey['departureStation']
 
-def drawBlankSignage(device, width: int, height: int, departureStation: str, fontBold: FreeTypeFont, fontBoldLarge: FreeTypeFont):
+def drawBlankSignage(device, width: int, height: int, departureStation: str, fontBold: FreeTypeFont, fontBoldLarge: FreeTypeFont, fontBoldTall: FreeTypeFont):
     global stationRenderCount, pauseCount
 
     with canvas(device) as draw:
@@ -214,10 +214,8 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str, fon
 
     virtualViewport = viewport(device, width=width, height=height)
 
-    rowOne = snapshot(width, 10, renderWelcomeTo(
-        int((width - welcomeSizeX) / 2), fontBold), interval=10)
-    rowTwo = snapshot(width, 10, renderDepartureStation(
-        departureStation, int((width - stationSizeX) / 2), fontBold), interval=10)
+    rowOne = snapshot(width, 10, renderWelcomeTo(int((width - welcomeSizeX) / 2), fontBold), interval=10)
+    rowTwo = snapshot(width, 10, renderDepartureStation(departureStation, int((width - stationSizeX) / 2), fontBold), interval=10)
     rowThree = snapshot(width, 10, renderDots, interval=10, fontBold=fontBold)
     rowTime = snapshot(width, 14, renderTime, interval=1, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
 
@@ -256,26 +254,19 @@ def drawSignage(device, width: int, height: int, data: Tuple[List[Dict[str, Any]
         platform_bbox = draw.textbbox((0, 0), "Plat 88", font)
         pw = platform_bbox[2] - platform_bbox[0]
 
-    rowOneA = snapshot(
-        width - w - pw, 10, renderDestination(departures[0], fontBold), interval=10)
-    rowOneB = snapshot(w, 10, renderServiceStatus(
-        departures[0], font), interval=1)
+    rowOneA = snapshot(width - w - pw, 10, renderDestination(departures[0], fontBold), interval=10)
+    rowOneB = snapshot(w, 10, renderServiceStatus(departures[0], font), interval=1)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0], font), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100, font=font)
-    rowTwoB = snapshot(width - callingWidth, 10,
-                       renderStations(firstDepartureDestinations, departures[0]['atocName'], font), interval=0.1)
+    rowTwoB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations, departures[0]['atocName'], font), interval=0.1)
     if len(departures) > 1:
-        rowThreeA = snapshot(width - w - pw, 10, renderDestination(
-            departures[1], font), interval=10)
-        rowThreeB = snapshot(w, 10, renderServiceStatus(
-            departures[1], font), interval=1)
+        rowThreeA = snapshot(width - w - pw, 10, renderDestination(departures[1], font), interval=10)
+        rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1], font), interval=1)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1], font), interval=10)
 
     if len(departures) > 2:
-        rowFourA = snapshot(width - w - pw, 10, renderDestination(
-            departures[2], font), interval=10)
-        rowFourB = snapshot(w, 10, renderServiceStatus(
-            departures[2], font), interval=1)
+        rowFourA = snapshot(width - w - pw, 10, renderDestination(departures[2], font), interval=10)
+        rowFourB = snapshot(w, 10, renderServiceStatus(departures[2], font), interval=1)
         rowFourC = snapshot(pw, 10, renderPlatform(departures[2], font), interval=10)
 
     rowTime = snapshot(width, 14, renderTime, interval=1, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
@@ -324,7 +315,7 @@ def main():
 
     if len(data[0]) == 0:
         virtual = drawBlankSignage(
-            device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2], fontBold=fontBold, fontBoldLarge=fontBoldLarge)
+            device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2], fontBold=fontBold, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
     else:
         virtual = drawSignage(device, width=DISPLAY_WIDTH,
                               height=DISPLAY_HEIGHT, data=data, font=font, fontBold=fontBold, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
@@ -339,7 +330,7 @@ def main():
 
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2], fontBold=fontBold, fontBoldLarge=fontBoldLarge)
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2], fontBold=fontBold, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
             else:
                 virtual = drawSignage(device, width=DISPLAY_WIDTH,
                                       height=DISPLAY_HEIGHT, data=data, font=font, fontBold=fontBold, fontBoldLarge=fontBoldLarge, fontBoldTall=fontBoldTall)
