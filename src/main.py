@@ -371,11 +371,19 @@ except ValueError as err:
     print(f"Error: {err}")
 
     #this is debug
+import json
+
 def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
     print(f"Requesting timetable data from: {timetableUrl}")
     response = requests.get(url=timetableUrl, auth=(username, password))
-    calling_data = response.json()
-    print(f"Received response: {calling_data}")
+
+    try:
+        calling_data = response.json()
+    except json.JSONDecodeError:
+        print("Error decoding JSON response.")
+        return []
+
+    print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
 
     if 'locations' not in calling_data:
         print("Error: 'locations' key not found in the response.")
@@ -395,4 +403,3 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
         calling_at[0] = calling_at[0] + ' only.'
 
     return calling_at
-
