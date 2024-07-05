@@ -17,8 +17,10 @@ DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
 
 def loadConfig() -> dict[str, Any]:
+    print("Loading configuration...")
     with open('config.json', 'r') as jsonConfig:
         data = json.load(jsonConfig)
+        print("Configuration loaded successfully.")
         return data
 
 def makeFont(name: str, size: int) -> FreeTypeFont:
