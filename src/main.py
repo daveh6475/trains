@@ -29,7 +29,18 @@ def makeFont(name: str, size: int) -> FreeTypeFont:
             name
         )
     )
-    return ImageFont.truetype(font_path, size)
+    
+    # Print the font path for debugging
+    print(f"Trying to load font from: {font_path}")
+    
+    # Check if the font file exists
+    if not os.path.isfile(font_path):
+        raise FileNotFoundError(f"Font file not found: {font_path}")
+
+    try:
+        return ImageFont.truetype(font_path, size)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load font: {font_path}") from e
 
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
