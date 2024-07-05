@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import json
 import requests
@@ -7,79 +8,102 @@ import cProfile
 import pstats
 import io
 
-from datetime import datetime, date
-from PIL import ImageFont, ImageDraw, Image
+from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont
-from helpers import get_device
-from trains import loadDeparturesForStationRTT, loadDestinationsForDepartureRTT, CallingPoints
+from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
+from trains import loadDeparturesForStationRTT, loadDestinationsForDepartureRTT, ProcessedDepartures, CallingPoints
 from luma.core.render import canvas
 from luma.core.virtual import viewport, snapshot
 from open import isRun
-from typing import Any, List, Tuple, Dict
+from typing import Any
 
 DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
 
-def loadConfig() -> Dict[str, Any]:
+def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
-        return json.load(jsonConfig)
+        data = json.load(jsonConfig)
+        return data
 
 def makeFont(name: str, size: int) -> FreeTypeFont:
-    font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fonts', name))
+    font_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            'fonts',
+            name
+        )
+    )
     return ImageFont.truetype(font_path, size)
 
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
-def renderDestination(departure: Dict[str, Any], font: FreeTypeFont, n: int = 0):
+def renderDestination(departure: dict, font: FreeTypeFont, n: int = 0):
     departureTime = departure['departureTime']
     destinationName = departure['destination']
-    ordinal = ["", "1st ", "2nd ", "3rd ", "4th "][n]
 
     def drawText(draw, width: int, height: int):
+        ordinal = ""
+        if n == 1:
+            ordinal = "1st "
+        elif n == 2:
+            ordinal = "2nd "
+        elif n == 3:
+            ordinal = "3rd "
+        elif n == 4:
+            ordinal = "4th "
+
         train = f"{ordinal}{departureTime}  {destinationName}"
         draw.text((0, 0), text=train, font=font, fill="yellow")
 
     return drawText
 
-def renderServiceStatus(departure: Dict[str, Any]):
+def renderServiceStatus(departure: dict):
     def drawText(draw, width: int, height: int):
-        train = "Cancelled" if departure['isCancelled'] else f"Exp {departure['departureTime']}"
+        train = ""
+
+        if departure['isCancelled']:
+            train = "Cancelled"
+        else:
+            train = 'Exp ' + departure['departureTime']
+
         w = int(draw.textlength(train, font))
         draw.text((width - w, 0), text=train, font=font, fill="yellow")
-
     return drawText
 
-def renderPlatform(departure: Dict[str, Any]):
+def renderPlatform(departure: dict):
     def drawText(draw, width: int, height: int):
-        if not departure['isCancelled'] and isinstance(departure['platform'], str):
-            draw.text((0, 0), text="Plat " + departure['platform'], font=font, fill="yellow")
-
+        if not departure['isCancelled']:
+            if isinstance(departure['platform'], str):
+                draw.text((0, 0), text="Plat " + departure['platform'], font=font, fill="yellow")
     return drawText
 
 def renderCallingAt(draw, width: int, height: int):
-    draw.text((0, 0), text="Calling at:", font=font, fill="yellow")
+    stations = "Calling at:"
+    draw.text((0, 0), text=stations, font=font, fill="yellow")
 
-def get_stations_string(stations: List[CallingPoints], toc: str) -> str:
-    if not stations:
+def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
+    if not stations:  # Check if stations list is empty
         return "No calling points available."
 
-    calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
-    if len(stations) > 1:
-        calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
-    else:
+    if len(stations) == 1:
         calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
+    else:
+        calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
+        calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
 
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
-def renderStations(stations: List[CallingPoints], toc: str):
+def renderStations(stations: list[CallingPoints], toc: str):
     calling_at_str = get_stations_string(stations, toc)
 
     def drawText(draw, width: int, height: int):
         global stationRenderCount, pauseCount
 
         calling_at_len = int(draw.textlength(calling_at_str, font))
+
         if calling_at_len == -stationRenderCount - 5:
             stationRenderCount = 0
 
@@ -87,6 +111,7 @@ def renderStations(stations: List[CallingPoints], toc: str):
 
         if stationRenderCount == 0 and pauseCount < 25:
             pauseCount += 1
+            stationRenderCount = 0
         else:
             pauseCount = 0
             stationRenderCount -= 1
@@ -97,58 +122,65 @@ def renderTime(draw, width: int, height: int):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
 
-    w1 = int(draw.textlength(f"{hour}:{minute}", fontBoldLarge))
+    w1 = int(draw.textlength("{}:{}".format(hour, minute), fontBoldLarge))
     w2 = int(draw.textlength(":00", fontBoldTall))
 
-    draw.text(((width - w1 - w2) / 2, 0), text=f"{hour}:{minute}", font=fontBoldLarge, fill="yellow")
-    draw.text((((width - w1 - w2) / 2) + w1, 5), text=f":{second}", font=fontBoldTall, fill="yellow")
+    draw.text(((width - w1 - w2) / 2, 0), text="{}:{}".format(hour, minute),
+              font=fontBoldLarge, fill="yellow")
+    draw.text((((width - w1 - w2) / 2) + w1, 5), text=":{}".format(second),
+              font=fontBoldTall, fill="yellow")
 
 def renderWelcomeTo(xOffset: int):
     def drawText(draw, width: int, height: int):
-        draw.text((int(xOffset), 0), text="Welcome to", font=fontBold, fill="yellow")
+        text = "Welcome to"
+        draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return drawText
 
 def renderDepartureStation(departureStation: str, xOffset: int):
     def draw(draw, width: int, height: int):
-        draw.text((int(xOffset), 0), text=departureStation, font=fontBold, fill="yellow")
+        text = departureStation
+        draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return draw
 
-def renderDots(draw, width: int, height: int):
-    draw.text((0, 0), text=".  .  .", font=fontBold, fill="yellow")
-
-def loadDeparturesForStationRTT(journeyConfig: Dict[str, Any], username: str, password: str) -> Tuple[List[Dict[str, Any]], str]:
-    if not journeyConfig.get("departureStation"):
+def loadDeparturesForStationRTT(journeyConfig, username, password):
+    if journeyConfig["departureStation"] == "":
         raise ValueError("Please set the journey.departureStation property in config.json")
 
-    if not username or not password:
+    if username == "" or password == "":
         raise ValueError("Please complete the rttApi section of your config.json file")
 
     departureStation = journeyConfig["departureStation"]
 
     response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
-    response.raise_for_status()
     data = response.json()
     translated_departures = []
     td = date.today()
 
-    if not data.get('services'):
+    if data['services'] is None:
         return translated_departures, departureStation
 
     for item in data['services'][:5]:
         uid = item['serviceUid']
         destination_name = abbrStation(journeyConfig, item['locationDetail']['destination'][0]['description'])
-
+        
         dt = item['locationDetail']['gbttBookedDeparture']
-        edt = item['locationDetail'].get('realtimeDeparture', dt)
+        try:
+            edt = item['locationDetail']['realtimeDeparture']
+        except:
+            edt = item['locationDetail']['gbttBookedDeparture']
 
-        aimed_departure_time = f"{dt[:2]}:{dt[2:]}"
-        expected_departure_time = f"{edt[:2]}:{edt[2:]}"
+        aimed_departure_time = dt[:2] + ':' + dt[2:]
+        expected_departure_time = edt[:2] + ':' + edt[2:]
         status = item['locationDetail']['displayAs']
         mode = item['serviceType']
-        platform = item['locationDetail'].get('platform', "")
+        try:
+            platform = item['locationDetail']['platform']
+        except:
+            platform = ""
 
+        # Fetch calling points for the departure
         timetable_url = f"https://api.rtt.io/api/v1/json/service/{uid}/{td.year}/{td.month:02}/{td.day:02}"
         calling_at = loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable_url)
 
@@ -160,23 +192,100 @@ def loadDeparturesForStationRTT(journeyConfig: Dict[str, Any], username: str, pa
             'status': status,
             'mode': mode,
             'platform': platform,
-            'calling_at': calling_at
+            'calling_at': calling_at  # Include calling at information
         })
 
     return translated_departures, departureStation
 
-def loadDestinationsForDepartureRTT(journeyConfig: Dict[str, Any], username: str, password: str, timetableUrl: str) -> List[str]:
-    response = requests.get(timetableUrl, auth=(username, password))
-    response.raise_for_status()
-    calling_data = response.json()
+def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
+    r = requests.get(url=timetableUrl, auth=(username, password))
+    calling_data = r.json()
 
-    index = next((i for i, loc in enumerate(calling_data['locations']) if loc['crs'] == journeyConfig["departureStation"]), -1)
-    calling_at = [abbrStation(journeyConfig, loc['description']) for loc in calling_data['locations'][index+1:]]
+    index = 0
+    for loc in calling_data['locations']:
+        if loc['crs'] == journeyConfig["departureStation"]:
+            break
+        index += 1
+
+    calling_at = []    
+    for loc in calling_data['locations'][index+1:]:
+        calling_at.append(abbrStation(journeyConfig, loc['description']))
 
     if len(calling_at) == 1:
-        calling_at[0] += ' only.'
+        calling_at[0] = calling_at[0] + ' only.'
 
     return calling_at
+
+def renderDots(draw, width: int, height: int):
+    text = ".  .  ."
+    draw.text((0, 0), text=text, font=fontBold, fill="yellow")
+
+from datetime import datetime
+
+def loadDataRTT(apiDetails, journey):
+    base_url = "https://api.rtt.io/api/v1/json/search/"  # Base URL for search endpoint
+    details_base_url = "https://api.rtt.io/api/v1/json/service/"  # Base URL for service details endpoint
+
+    # Prepare the credential string properly outside the f-string
+    credentials = f"{apiDetails['username']}:{apiDetails['password']}"
+    encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+    # Now use the properly encoded credentials in the header
+    headers = {
+        'Authorization': f"Basic {encoded_credentials}"
+    }
+
+    # Request for departures
+    url = f"{base_url}{journey['departureStation']}"
+    departure_response = requests.get(url, headers=headers)
+    departures_data = departure_response.json()
+
+    departures = []
+    for service in departures_data.get('services', []):
+        origin_info = service.get('origin', [{}])[0]  # Provide a default [{}] for safe access
+        destination_info = service['locationDetail'].get('destination', [{}])[0]  # Same default handling
+
+        departures.append({
+            'serviceUid': service['serviceUid'],
+            'runDate': service['runDate'],
+            'trainIdentity': service['trainIdentity'],
+            'origin': origin_info.get('description', 'Unknown Origin'),
+            'destination': destination_info.get('description', 'Unknown Destination'),
+            'departureTime': service['locationDetail'].get('gbttBookedDeparture', 'Unknown Time'),
+            'arrivalTime': destination_info.get('publicTime', 'Unknown Time'),
+            'platform': service['locationDetail'].get('platform', 'N/A'),
+            'isCancelled': service['locationDetail'].get('displayAs', '') == 'CANCELLED_CALL',
+            'atocName': service.get('atocName', 'Unknown TOC')
+        })
+
+    # Ensure there is at least one departure before fetching details
+    first_departure_destinations = []
+    if departures:
+        # Fetch additional details for the first departure if available
+        first_departure_date = datetime.strptime(departures[0]['runDate'], "%Y-%m-%d").strftime("%Y/%m/%d")
+        first_departure_url = f"{details_base_url}{departures[0]['serviceUid']}/{first_departure_date}"
+        first_departure_response = requests.get(first_departure_url, headers=headers)
+        if first_departure_response.status_code == 200:
+            first_departure_data = first_departure_response.json()
+
+            # Find the index of the departure station
+            start_index = next(
+                (index for index, loc in enumerate(first_departure_data.get('locations', [])) if loc['crs'] == journey['departureStation']),
+                None
+            )
+
+            if start_index is not None:
+                for location in first_departure_data['locations'][start_index+1:]:
+                    first_departure_destinations.append(
+                        CallingPoints(
+                            station=location['description'],  # Use 'description' instead of 'locationName'
+                            arrival_time=location.get('gbttBookedArrival', 'Unknown')
+                        )
+                    )
+    else:
+        first_departure_destinations = []
+
+    return departures, first_departure_destinations, journey['departureStation']
 
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
@@ -193,12 +302,14 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
 
     virtualViewport = viewport(device, width=width, height=height)
 
-    rowOne = snapshot(width, 10, renderWelcomeTo((width - welcomeSizeX) / 2), interval=10)
-    rowTwo = snapshot(width, 10, renderDepartureStation(departureStation, (width - stationSizeX) / 2), interval=10)
+    rowOne = snapshot(width, 10, renderWelcomeTo(
+        int((width - welcomeSizeX) / 2)), interval=10)
+    rowTwo = snapshot(width, 10, renderDepartureStation(
+        departureStation, int((width - stationSizeX) / 2)), interval=10)
     rowThree = snapshot(width, 10, renderDots, interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=1)
 
-    if virtualViewport._hotspots:
+    if len(virtualViewport._hotspots) > 0:
         for hotspot, xy in virtualViewport._hotspots:
             virtualViewport.remove_hotspot(hotspot, xy)
 
@@ -227,30 +338,38 @@ def drawSignage(device, width, height, data):
 
     width = virtualViewport.width
 
+    # First measure the text size
     with canvas(device) as draw:
         status_bbox = draw.textbbox((0, 0), status, font)
         w = status_bbox[2] - status_bbox[0]
         platform_bbox = draw.textbbox((0, 0), "Plat 88", font)
         pw = platform_bbox[2] - platform_bbox[0]
 
-    rowOneA = snapshot(width - w - pw, 10, renderDestination(departures[0], fontBold), interval=10)
-    rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=1)
+    rowOneA = snapshot(
+        width - w - pw, 10, renderDestination(departures[0], fontBold), interval=10)
+    rowOneB = snapshot(w, 10, renderServiceStatus(
+        departures[0]), interval=1)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-    rowTwoB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations, departures[0]['atocName']), interval=0.1)
+    rowTwoB = snapshot(width - callingWidth, 10,
+                       renderStations(firstDepartureDestinations, departures[0]['atocName']), interval=0.1)
     if len(departures) > 1:
-        rowThreeA = snapshot(width - w - pw, 10, renderDestination(departures[1], font), interval=10)
-        rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=1)
+        rowThreeA = snapshot(width - w - pw, 10, renderDestination(
+            departures[1], font), interval=10)
+        rowThreeB = snapshot(w, 10, renderServiceStatus(
+            departures[1]), interval=1)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
 
     if len(departures) > 2:
-        rowFourA = snapshot(width - w - pw, 10, renderDestination(departures[2], font), interval=10)
-        rowFourB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=1)
+        rowFourA = snapshot(width - w - pw, 10, renderDestination(
+            departures[2], font), interval=10)
+        rowFourB = snapshot(w, 10, renderServiceStatus(
+            departures[2]), interval=1)
         rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
 
     rowTime = snapshot(width, 14, renderTime, interval=1)
 
-    if virtualViewport._hotspots:
+    if len(virtualViewport._hotspots) > 0:
         for hotspot, xy in virtualViewport._hotspots:
             virtualViewport.remove_hotspot(hotspot, xy)
 
@@ -289,26 +408,34 @@ try:
 
     if config["apiMethod"] == 'rtt':
         data = loadDataRTT(config["rttApi"], config["journey"])
+    # else:
+    #     data = loadData(config["transportApi"], config["journey"])
     else:
         raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
 
-    if not data[0]:
-        virtual = drawBlankSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+    if len(data[0]) == 0:
+        virtual = drawBlankSignage(
+            device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
     else:
-        virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=data)
+        virtual = drawSignage(device, width=DISPLAY_WIDTH,
+                              height=DISPLAY_HEIGHT, data=data)
 
     timeAtStart = time.time()
     timeNow = time.time()
 
     while True:
-        if timeNow - timeAtStart >= config["refreshTime"]:
+        if (timeNow - timeAtStart >= config["refreshTime"]):
             if config["apiMethod"] == 'rtt':
                 data = loadDataRTT(config["rttApi"], config["journey"])
+            # else:
+            #     data = loadData(config["transportApi"], config["journey"])
 
-            if not data[0]:
-                virtual = drawBlankSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+            if len(data[0]) == 0:
+                virtual = drawBlankSignage(
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
             else:
-                virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=data)
+                virtual = drawSignage(device, width=DISPLAY_WIDTH,
+                                      height=DISPLAY_HEIGHT, data=data)
 
             timeAtStart = time.time()
 
@@ -323,9 +450,11 @@ except requests.RequestException as err:
     print(f"Request Error: {err}")
 
 def main():
+    # Initialize and start your main functionality here
     device = get_device()
     width, height = device.width, device.height
     
+    # Assuming `loadDataRTT` and `drawSignage` are part of your existing functions
     config = loadConfig()
     rttApi = config['rttApi']
     journey = config['journey']
@@ -334,6 +463,7 @@ def main():
     if data:
         drawSignage(device, width, height, data)
 
+# Profile the main function
 if __name__ == '__main__':
     pr = cProfile.Profile()
     pr.enable()
