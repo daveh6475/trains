@@ -232,7 +232,7 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str, fon
 
     return virtualViewport
 
-def drawSignage(device, width, height, data, font, fontBold, fontBoldLarge, fontBoldTall):
+def drawSignage(device, width: int, height: int, data: Tuple[List[Dict[str, Any]], List[CallingPoints], str], font: FreeTypeFont, fontBold: FreeTypeFont, fontBoldLarge: FreeTypeFont, fontBoldTall: FreeTypeFont):
     global stationRenderCount, pauseCount
 
     device.clear()
