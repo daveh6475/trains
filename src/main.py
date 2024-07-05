@@ -17,10 +17,8 @@ DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
 
 def loadConfig() -> dict[str, Any]:
-    print("Loading configuration...")
     with open('config.json', 'r') as jsonConfig:
         data = json.load(jsonConfig)
-        print("Configuration loaded successfully.")
         return data
 
 def makeFont(name: str, size: int) -> FreeTypeFont:
@@ -31,18 +29,7 @@ def makeFont(name: str, size: int) -> FreeTypeFont:
             name
         )
     )
-    
-    # Print the font path for debugging
-    print(f"Trying to load font from: {font_path}")
-    
-    # Check if the font file exists
-    if not os.path.isfile(font_path):
-        raise FileNotFoundError(f"Font file not found: {font_path}")
-
-    try:
-        return ImageFont.truetype(font_path, size)
-    except Exception as e:
-        raise RuntimeError(f"Failed to load font: {font_path}") from e
+    return ImageFont.truetype(font_path, size)
 
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
