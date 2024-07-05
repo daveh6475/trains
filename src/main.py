@@ -441,6 +441,9 @@ try:
 
         timeNow = time.time()
         virtual.refresh()
+        
+        # Add a short sleep to reduce CPU usage
+        time.sleep(0.05)
 
 except KeyboardInterrupt:
     pass
