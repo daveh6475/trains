@@ -137,9 +137,14 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
     # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
 
+    print(f"Departure station: {departure_station}")
+    print(f"Stations before filtering: {[station.station for station in stations]}")
+
     # If the departure station is found, filter the list to include only stations after it
     if departure_index is not None:
         stations = stations[departure_index + 1:]
+
+    print(f"Stations after filtering: {[station.station for station in stations]}")
 
     calling_at_str = get_stations_string(stations, toc)
 
