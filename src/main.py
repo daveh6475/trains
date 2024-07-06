@@ -385,23 +385,17 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
     # Print the full JSON response for debugging
     print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
 
-    # Adjust the key names based on the actual response structure
-    if 'locations' not in calling_data:
-        print("Error: 'locations' key not found in the response. Full response:")
-        print(json.dumps(calling_data, indent=2))
-        return []
+    # Temporarily bypass the need for 'locations'
+    return []
 
-    index = 0
-    for loc in calling_data['locations']:
-        if loc['crs'] == journeyConfig["departureStation"]:
-            break
-        index += 1
+# Example usage
+journeyConfig = {
+    "departureStation": "FRM",
+    # Add other necessary journey config here
+}
+username = "your_username"
+password = "your_password"
+timetableUrl = "https://api.rtt.io/api/v1/json/service/L58427/2024/07/06"
 
-    calling_at = []    
-    for loc in calling_data['locations'][index+1:]:
-        calling_at.append(abbrStation(journeyConfig, loc['description']))
-
-    if len(calling_at) == 1:
-        calling_at[0] = calling_at[0] + ' only.'
-
-    return calling_at
+# Call the function
+loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl)
