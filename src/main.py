@@ -134,6 +134,14 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     return calling_at_str
 
 def renderStations(stations: list[CallingPoints], toc: str):
+        # Find the index of the departure station in the list
+    departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
+    
+    # If the departure station is found, filter the list to include only stations after it
+    
+    if departure_index is not None:
+        stations = stations[departure_index + 1:]
+        
     calling_at_str = get_stations_string(stations, toc)
     def drawText(draw, *_):
         global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
