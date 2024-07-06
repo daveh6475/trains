@@ -216,10 +216,10 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     calling_data = r.json()
 
     # Find the index of the departure station by CRS code
-    departure_crs = journeyConfig["departureStation"]
+    departure_crs = journeyConfig["departureStation"].strip().lower()
     index = 0
     for loc in calling_data['locations']:
-        if loc['crs'].strip().lower() == departure_crs.strip().lower():
+        if loc['crs'].strip().lower() == departure_crs:
             break
         index += 1
 
@@ -229,10 +229,11 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     calling_at = []
     for loc in calling_data['locations'][index+1:]:
         calling_at.append(
-            CallingPoints(loc['description'], loc["realtimeArrival"])
+            CallingPoints(loc['description'].strip().lower(), loc["realtimeArrival"])
         )
 
     return calling_at
+
 
 
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
