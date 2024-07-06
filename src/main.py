@@ -3,7 +3,7 @@ import sys
 import time
 import json
 import requests
-import cprofile #delete after
+import cProfile #delete after
 import pstats #delete after
 import io #delete after
 
