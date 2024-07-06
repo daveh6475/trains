@@ -1,7 +1,7 @@
 import requests
 from datetime import date
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List, Tuple
 
 @dataclass
 class ProcessedDepartures:
@@ -20,21 +20,18 @@ class CallingPoints:
     station: str
     arrival_time: str
 
-
 def abbrStation(journeyConfig: dict[str, Any], inputStr: str) -> str:
-    dict = journeyConfig['stationAbbr']
-    for key in dict.keys():
-        inputStr = inputStr.replace(key, dict[key])
+    station_dict = journeyConfig['stationAbbr']
+    for key in station_dict.keys():
+        inputStr = inputStr.replace(key, station_dict[key])
     return inputStr
 
-def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> tuple[list[ProcessedDepartures], str]:
+def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> Tuple[List[ProcessedDepartures], str]:
     if journeyConfig["departureStation"] == "":
-        raise ValueError(
-            "Please set the journey.departureStation property in config.json")
+        raise ValueError("Please set the journey.departureStation property in config.json")
 
     if username == "" or password == "":
-        raise ValueError(
-            "Please complete the rttApi section of your config.json file")
+        raise ValueError("Please complete the rttApi section of your config.json file")
 
     departureStation = journeyConfig["departureStation"]
 
@@ -66,7 +63,6 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
             platform = ""
 
         toc = item["atocName"]
-        
 
         translated_departures.append(
             ProcessedDepartures(
@@ -79,7 +75,7 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
 
     return translated_departures, departureStation
 
-def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> list[CallingPoints]:
+def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> List[CallingPoints]:
     r = requests.get(url=timetableUrl, auth=(username, password))
     calling_data = r.json()
 
