@@ -384,12 +384,12 @@ try:
                 data = loadDataRTT(config["rttApi"], config["journey"])
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation)
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
             else:
                 departureData = data[0]
                 nextStations = data[1]
                 station = data[2]
-                virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=screenData)
+                virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=data)
                 # virtual = drawDebugScreen(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, showTime=True)
                 
             timeAtStart = time.time()
