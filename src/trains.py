@@ -84,6 +84,7 @@ def ProcessDepartures(journeyConfig, data):
 
     # get departure station name
     departureStationName = data['locationName']
+    print(f"Departure Station Name: {departureStationName}")
 
     if 'trainServices' in data:
         Services = data['trainServices']
@@ -186,9 +187,12 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
         raise ValueError("Please complete the rttApi section of your config.json file")
 
     departureStation = journeyConfig["departureStation"]
+    print(f"Requesting departures for station: {departureStation}")
 
     response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
     data = response.json()
+    print(f"Response data: {data}")
+
     translated_departures = []
     td = date.today()
 
@@ -224,12 +228,15 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
                 toc=toc
             )
         )
-
+    
+    print(f"Translated departures: {translated_departures}")
     return translated_departures, departureStation
 
 def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> List[CallingPoints]:
+    print(f"Requesting timetable URL: {timetableUrl}")
     r = requests.get(url=timetableUrl, auth=(username, password))
     calling_data = r.json()
+    print(f"Calling data: {calling_data}")
 
     index = 0
     for loc in calling_data['locations']:
@@ -243,10 +250,10 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
             CallingPoints(loc['description'], loc["realtimeArrival"])
         )
 
+    print(f"Calling at: {calling_at}")
     return calling_at
 
-# Example of how you might use these functions in your main script
-def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[List[ProcessedDepartures], List[CallingPoints], str]:
+def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if not isRun(runHours[0], runHours[1]):
         return [], [], journeyConfig['outOfHoursName']
