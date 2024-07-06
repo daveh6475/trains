@@ -292,3 +292,31 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
+
+#debug
+def main():
+    # Initialize and start your main functionality here
+    device = get_device()
+    width, height = device.width, device.height
+    
+    # Assuming `loadDataRTT` and `drawSignage` are part of your existing functions
+    config = loadConfig()
+    rttApi = config['rttApi']
+    journey = config['journey']
+    
+    data = loadDataRTT(rttApi, journey)
+    if data:
+        drawSignage(device, width, height, data)
+
+# Profile the main function
+if __name__ == '__main__':
+    pr = cProfile.Profile()
+    pr.enable()
+    main()
+    pr.disable()
+    
+    s = io.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
