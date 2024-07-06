@@ -371,8 +371,6 @@ except ValueError as err:
     print(f"Error: {err}")
 
     #this is debug
-import json
-
 def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
     print(f"Requesting timetable data from: {timetableUrl}")
     response = requests.get(url=timetableUrl, auth=(username, password))
@@ -383,6 +381,7 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
         print("Error decoding JSON response.")
         return []
 
+    # Print the full JSON response for debugging
     print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
 
     if 'locations' not in calling_data:
