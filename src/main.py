@@ -118,6 +118,7 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
+
 def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
     # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
@@ -127,6 +128,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
         stations = stations[departure_index + 1:]
 
     calling_at_str = get_stations_string(stations, toc)
+
     def drawText(draw, *_):
         global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
         if len(stations) == stationRenderCount - 5:
@@ -153,6 +155,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
             else:
                 pixelsUp = pixelsUp + 1
     return drawText
+
 
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
@@ -220,7 +223,12 @@ def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tup
         return [], [], journeyConfig['outOfHoursName']
     firstDepartureDestinations = loadDestinationsForDepartureRTT(
         journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
-    return departures, firstDepartureDestinations, stationName
+
+    # Remove the departure station from the calling points
+    departure_station = journeyConfig["departureStation"]
+    filtered_calling_points = [cp for cp in firstDepartureDestinations if cp.station != departure_station]
+
+    return departures, filtered_calling_points, stationName
 
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
