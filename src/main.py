@@ -375,17 +375,20 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
     print(f"Requesting timetable data from: {timetableUrl}")
     response = requests.get(url=timetableUrl, auth=(username, password))
 
+    # Check if the response is in JSON format
     try:
         calling_data = response.json()
     except json.JSONDecodeError:
-        print("Error decoding JSON response.")
+        print(f"Error decoding JSON response. Response content: {response.text}")
         return []
 
     # Print the full JSON response for debugging
     print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
 
+    # Adjust the key names based on the actual response structure
     if 'locations' not in calling_data:
-        print("Error: 'locations' key not found in the response.")
+        print("Error: 'locations' key not found in the response. Full response:")
+        print(json.dumps(calling_data, indent=2))
         return []
 
     index = 0
