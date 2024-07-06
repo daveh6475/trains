@@ -127,6 +127,9 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
     if departure_index is not None:
         stations = stations[departure_index + 1:]
 
+    # Debug: print the stations to be displayed
+    print(f"Calling points after {departure_station}: {[s.station for s in stations]}")
+
     calling_at_str = get_stations_string(stations, toc)
 
     def drawText(draw, *_):
@@ -155,6 +158,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
             else:
                 pixelsUp = pixelsUp + 1
     return drawText
+
 
 
 def renderTime(draw, width, *_):
@@ -227,8 +231,12 @@ def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tup
     # Remove the departure station from the calling points
     departure_station = journeyConfig["departureStation"]
     filtered_calling_points = [cp for cp in firstDepartureDestinations if cp.station != departure_station]
+    
+    # Debug: print the filtered calling points
+    print(f"Filtered calling points (excluding {departure_station}): {[cp.station for cp in filtered_calling_points]}")
 
     return departures, filtered_calling_points, stationName
+
 
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
