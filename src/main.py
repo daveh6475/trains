@@ -271,7 +271,7 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
 def drawSignage(device, width, height, data):
    global stationRenderCount, pauseCount
 
- virtualViewport = viewport(device, width=width, height=height)
+    virtualViewport = viewport(device, width=width, height=height)
 
     status = "Exp 00:00"
     callingAt = "Calling at: "
