@@ -139,12 +139,9 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
 
     print(f"Departure station: {full_station_name}")
     print(f"Stations before filtering: {[station.station for station in stations]}")
-    
+
     # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station == full_station_name), None)
-
-    print(f"Departure station: {departure_station}")
-    print(f"Stations before filtering: {[station.station for station in stations]}")
 
     # If the departure station is found, filter the list to include only stations after it
     if departure_index is not None:
@@ -184,6 +181,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
                 pixelsUp = pixelsUp + 1
 
     return drawText
+
 
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
