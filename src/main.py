@@ -368,9 +368,11 @@ try:
         data = loadDataRTT(config["rttApi"], config["journey"])
     else:
         raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
-    if len(data[0]) == 0:
-        virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+        
+    if len(departures) == 0:
+        noTrains = drawBlankSignage(device, width=width, height=height, departureStation=departureStation)
+        return noTrains
+        
     else:
         virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
 
