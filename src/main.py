@@ -49,10 +49,8 @@ def renderDestination(departure: ProcessedDepartures, font: FreeTypeFont, n: int
             ordinal = "3rd "
         elif n == 4:
             ordinal = "4th "
-
         train = f"{ordinal}{departureTime}  {destinationName}"
         draw.text((0, 0), text=train, font=font, fill="yellow")
-
     return drawText
 
 def renderServiceStatus(departure: ProcessedDepartures):
@@ -65,7 +63,6 @@ def renderServiceStatus(departure: ProcessedDepartures):
                 train = 'Exp ' + departure.expected_departure_time
             if departure.expected_departure_time == departure.expected_departure_time:
                 train = "On time"
-
         w = int(draw.textlength(train, font))
         draw.text((width - w, 0), text=train, font=font, fill="yellow")
     return drawText
@@ -137,16 +134,12 @@ def renderDots(draw, width: int, height: int):
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
 def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
-    print(f"Requesting timetable data from: {timetableUrl}")
     response = requests.get(url=timetableUrl, auth=(username, password))
     try:
         calling_data = response.json()
     except json.JSONDecodeError:
-        print(f"Error decoding JSON response. Response content: {response.text}")
         return []
-    print(f"Received response: {json.dumps(calling_data, indent=2)}")
     if 'locations' not in calling_data:
-        print("Error: 'locations' key not found in the response.")
         return []
     locations = calling_data.get('locations', [])
     return [CallingPoints(station=loc['description'], arrival_time=loc.get('gbttBookedArrival', 'Unknown')) for loc in locations]
@@ -154,19 +147,13 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[list[ProcessedDepartures], list[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if isRun(runHours[0], runHours[1]) == False:
-        print("Out of operating hours.")
         return [], [], journeyConfig['outOfHoursName']
-    print("Loading departures for station...")
     departures, stationName = loadDeparturesForStationRTT(
         journeyConfig, apiConfig["username"], apiConfig["password"])
     if len(departures) == 0:
-        print("No departures found.")
         return [], [], journeyConfig['outOfHoursName']
-    print(f"Found {len(departures)} departures.")
-    print(f"Loading destinations for the first departure with UID {departures[0].uid}...")
     firstDepartureDestinations = loadDestinationsForDepartureRTT(
         journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
-    print(f"Found {len(firstDepartureDestinations)} calling points for the first departure.")
     return departures, firstDepartureDestinations, stationName
 
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
