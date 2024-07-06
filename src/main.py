@@ -356,7 +356,10 @@ try:
     fontBold = makeFont("Dot Matrix Bold.ttf", 10)
     fontBoldTall = makeFont("Dot Matrix Bold Tall.ttf", 10)
     fontBoldLarge = makeFont("Dot Matrix Bold.ttf", 20)
-    
+
+    widgetWidth = 256
+    widgetHeight = 64
+
     stationRenderCount = 0
     pauseCount = 0
     loop_count = 0
