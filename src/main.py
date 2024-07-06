@@ -52,10 +52,7 @@ def renderDestination(departure: ProcessedDepartures, font, pos):
     destinationName = departure.destination_name
 
     def drawText(draw, *_):
-        if config["showDepartureNumbers"]:
-            train = f"{pos}  {departureTime}  {destinationName}"
-        else:
-            train = f"{departureTime}  {destinationName}"
+        train = f"{departureTime}  {destinationName}"
         _, _, bitmap = cachedBitmapText(train, font)
         draw.bitmap((0, 0), bitmap, fill="yellow")
 
