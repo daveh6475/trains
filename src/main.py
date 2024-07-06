@@ -3,12 +3,11 @@ import sys
 import time
 import json
 import requests
-import cProfile #delete after
-import pstats #delete after
-import io #delete after
+import cProfile
+import pstats
+import io
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
-from PIL.ImageFont import FreeTypeFont
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
 from trains import loadDeparturesForStationRTT, ProcessedDepartures, CallingPoints
 from luma.core.render import canvas
@@ -21,32 +20,34 @@ from luma.oled.device import ssd1322
 from luma.core.virtual import viewport, snapshot
 from luma.core.sprite_system import framerate_regulator
 import socket, re, uuid
+
 global toc
 DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
+
 def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
         data = json.load(jsonConfig)
         return data
+
 def makeFont(name, size):
-    font_path = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            'fonts',
-            name
-        )
-    )
+    font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fonts', name))
     return ImageFont.truetype(font_path, size, layout_engine=ImageFont.Layout.BASIC)
+
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
+
 def renderDestination(departure: ProcessedDepartures, font, pos):
     departureTime = departure.aimed_departure_time
     destinationName = departure.destination_name
+
     def drawText(draw, *_):
         train = f"{departureTime}  {destinationName}"
         _, _, bitmap = cachedBitmapText(train, font)
         draw.bitmap((0, 0), bitmap, fill="yellow")
+
     return drawText
+
 def renderServiceStatus(departure: ProcessedDepartures):
     def drawText(draw, width, *_):
         train = ""
@@ -61,21 +62,25 @@ def renderServiceStatus(departure: ProcessedDepartures):
         w, _, bitmap = cachedBitmapText(train, font)
         draw.bitmap((width - w, 0), bitmap, fill="yellow")
     return drawText
+
 def renderPlatform(departure: ProcessedDepartures):
     def drawText(draw, *_):
         if departure.mode == "bus":
             draw.text((0, 0), text="BUS", font=font, fill="yellow")
         else:
             if isinstance(departure.platform, str):
-                platform = "Plat " + departure.platform  # Define platform string #chatGPT added this line in
+                platform = "Plat " + departure.platform
                 _, _, bitmap = cachedBitmapText(platform, font)
                 draw.bitmap((0, 0), bitmap, fill="yellow")
     return drawText
+
 def renderCallingAt(draw, *_):
     stations = "Calling at:"
     _, _, bitmap = cachedBitmapText(stations, font)
     draw.bitmap((0, 0), bitmap, fill="yellow")
+
 bitmapRenderCache = {}
+
 def cachedBitmapText(text, font):
     text = str(text)
     # cache the bitmap representation of the stations string
@@ -99,10 +104,12 @@ def cachedBitmapText(text, font):
         # save to render cache
         bitmapRenderCache[key] = {'bitmap': bitmap, 'txt_width': txt_width, 'txt_height': txt_height}
     return txt_width, txt_height, bitmap
+
 pixelsLeft = 1
 pixelsUp = 0
 hasElevated = 0
 pauseCount = 0
+
 def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     if not stations:
         return "No calling points available."
@@ -114,12 +121,11 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
-def renderStations(stations: list[CallingPoints], toc: str):
-        # Find the index of the departure station in the list
+def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
+    # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
 
     # If the departure station is found, filter the list to include only stations after it
-
     if departure_index is not None:
         stations = stations[departure_index + 1:]
 
@@ -150,6 +156,7 @@ def renderStations(stations: list[CallingPoints], toc: str):
             else:
                 pixelsUp = pixelsUp + 1
     return drawText
+
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
@@ -158,6 +165,7 @@ def renderTime(draw, width, *_):
     _, _, SBitmap = cachedBitmapText(':{}'.format(second), fontBoldTall)
     draw.bitmap(((width - w1 - w2) / 2, 0), HMBitmap, fill="yellow")
     draw.bitmap((((width - w1 - w2) / 2) + w1, 5), SBitmap, fill="yellow")
+
 def renderDebugScreen(lines):
     def drawDebug(draw, *_):
         # draw a box
@@ -177,6 +185,7 @@ def renderDebugScreen(lines):
             w, _, bitmap = cachedBitmapText(text, font)
             draw.bitmap(coords[key], bitmap, fill="yellow")        
     return drawDebug
+
 def renderWelcomeTo(xOffset):
     def drawText(draw, *_):
         text = "Welcome to"
@@ -188,9 +197,11 @@ def renderDepartureStation(departureStation, xOffset):
         text = departureStation
         draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
     return draw
+
 def renderDots(draw, *_):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
+
 def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
     response = requests.get(url=timetableUrl, auth=(username, password))
     try:
@@ -201,6 +212,7 @@ def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetable
         return []
     locations = calling_data.get('locations', [])
     return [CallingPoints(station=loc['description'], arrival_time=loc.get('gbttBookedArrival', 'Unknown')) for loc in locations]
+
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[list[ProcessedDepartures], list[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if isRun(runHours[0], runHours[1]) == False:
@@ -212,6 +224,7 @@ def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tup
     firstDepartureDestinations = loadDestinationsForDepartureRTT(
         journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
     return departures, firstDepartureDestinations, stationName
+
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
     welcomeSize = int(fontBold.getlength("Welcome to"))
@@ -234,6 +247,7 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
     virtualViewport.add_hotspot(rowThree, (0, 24))
     virtualViewport.add_hotspot(rowTime, (0, 50))
     return virtualViewport
+
 def drawSignage(device, width, height, data):
     global stationRenderCount, pauseCount
     virtualViewport = viewport(device, width=width, height=height)
@@ -243,7 +257,6 @@ def drawSignage(device, width, height, data):
     w = int(font.getlength(callingAt))
     callingWidth = w
     width = virtualViewport.width
-    # First measure the text size
     w = int(font.getlength(status))
     pw = int(font.getlength("Plat 88"))
     if len(departures) == 0:
@@ -252,29 +265,20 @@ def drawSignage(device, width, height, data):
     firstFont = font
     firstFont = fontBold
         
-    rowOneA = snapshot(
-        width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=10)
-    rowOneB = snapshot(w, 10, renderServiceStatus(
-        departures[0]), interval=10)
+    rowOneA = snapshot(width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=10)
+    rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
-                       # might need to delete departures[0].toc 
-                       renderStations(firstDepartureDestinations, departures), interval=0.02)  
+                       renderStations(firstDepartureDestinations, departures[0].toc, departureStation), interval=0.02)  
     if len(departures) > 1:
-        rowThreeA = snapshot(width - w - pw, 10, renderDestination(
-            departures[1], font, '2nd'), interval=10)
-        rowThreeB = snapshot(w, 10, renderServiceStatus(
-            departures[1]), interval=10)
+        rowThreeA = snapshot(width - w - pw, 10, renderDestination(departures[1], font, '2nd'), interval=10)
+        rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
-        
     if len(departures) > 2:
-        rowFourA = snapshot(width - w - pw, 10, renderDestination(
-            departures[2], font, '3rd'), interval=10)
-        rowFourB = snapshot(w, 10, renderServiceStatus(
-            departures[2]), interval=10)
-        rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10
-                           )
+        rowFourA = snapshot(width - w - pw, 10, renderDestination(departures[2], font, '3rd'), interval=10)
+        rowFourB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=10)
+        rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=0.1)
     if len(virtualViewport._hotspots) > 0:
         for vhotspot, xy in virtualViewport._hotspots:
@@ -296,6 +300,7 @@ def drawSignage(device, width, height, data):
         virtualViewport.add_hotspot(rowFourC, (width - w - pw, 36))
     virtualViewport.add_hotspot(rowTime, (0, 50))
     return virtualViewport
+
 try:
     serial = spi(port=0)
     device = ssd1322(serial, mode="1", rotate=2)
@@ -346,6 +351,7 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
+
 #debug
 def main():
     # Initialize and start your main functionality here
@@ -360,6 +366,7 @@ def main():
     data = loadDataRTT(rttApi, journey)
     if data:
         drawSignage(device, width, height, data)
+
 # Profile the main function
 if __name__ == '__main__':
     pr = cProfile.Profile()
