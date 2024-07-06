@@ -292,8 +292,7 @@ def drawSignage(device, width, height, data):
         return noTrains
 
     firstFont = font
-    if config['firstDepartureBold']:
-        firstFont = fontBold
+    firstFont = fontBold
         
     rowOneA = snapshot(
         width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=10)
