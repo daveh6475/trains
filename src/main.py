@@ -3,9 +3,7 @@ import sys
 import time
 import json
 import requests
-import cProfile
-import pstats
-import io
+
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
@@ -352,30 +350,3 @@ except ValueError as err:
 except requests.RequestException as err:
     print(f"Request Error: {err}")
 
-#debug
-def main():
-    # Initialize and start your main functionality here
-    device = get_device()
-    width, height = device.width, device.height
-    
-    # Assuming `loadDataRTT` and `drawSignage` are part of your existing functions
-    config = loadConfig()
-    rttApi = config['rttApi']
-    journey = config['journey']
-    
-    data = loadDataRTT(rttApi, journey)
-    if data:
-        drawSignage(device, width, height, data)
-
-# Profile the main function
-if __name__ == '__main__':
-    pr = cProfile.Profile()
-    pr.enable()
-    main()
-    pr.disable()
-    
-    s = io.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
