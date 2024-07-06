@@ -3,7 +3,6 @@ import re
 from datetime import date
 from dataclasses import dataclass
 from typing import Any, List, Tuple
-import xmltodict
 
 @dataclass
 class ProcessedDepartures:
@@ -79,9 +78,8 @@ def ArrivalOrder(ServicesIN):
     ServicesOUT = sorted(ServicesOUT, key=lambda k: k['sortOrder'])
     return ServicesOUT
 
-def ProcessDepartures(journeyConfig, APIOut):
+def ProcessDepartures(journeyConfig, data):
     show_individual_departure_time = journeyConfig["individualStationDepartureTime"]
-    data = APIOut
     Services = []
 
     # get departure station name
@@ -247,36 +245,26 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
 
     return calling_at
 
-def loadDeparturesForStation(journeyConfig, apiKey, rows):
-    if journeyConfig["departureStation"] == "":
-        raise ValueError("Please configure the departureStation environment variable")
+# Example of how you might use these functions in your main script
+def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[List[ProcessedDepartures], List[CallingPoints], str]:
+    runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
+    if not isRun(runHours[0], runHours[1]):
+        return [], [], journeyConfig['outOfHoursName']
 
-    if apiKey is None:
-        raise ValueError("Please configure the apiKey environment variable")
+    departures, stationName = loadDeparturesForStationRTT(journeyConfig, apiConfig["username"], apiConfig["password"])
+    
+    print(f"Departures: {departures}")
+    print(f"Station Name: {stationName}")
 
-    APIRequest = """
-        <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
-        <x:Header>
-            <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
-        </x:Header>
-        <x:Body>
-            <ldb:GetDepBoardWithDetailsRequest>
-                <ldb:numRows>""" + rows + """</ldb:numRows>
-                <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
-                <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
-                <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
-                <ldb:filterType>to</ldb:filterType>
-                <ldb:timeWindow>120</ldb:timeWindow>
-            </ldb:GetDepBoardWithDetailsRequest>
-        </x:Body>
-    </x:Envelope>"""
+    if len(departures) == 0:
+        return [], [], journeyConfig['outOfHoursName']
 
-    headers = {'Content-Type': 'text/xml'}
-    apiURL = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
+    firstDepartureDestinations = loadDestinationsForDepartureRTT(journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
 
-    APIOut = requests.post(apiURL, data=APIRequest, headers=headers).text
+    print(f"First Departure Destinations: {firstDepartureDestinations}")
 
-    Departures, departureStationName = ProcessDepartures(journeyConfig, APIOut)
+    return departures, firstDepartureDestinations, stationName
 
-    return Departures, departureStationName
-
+def isRun(start_hour, end_hour):
+    current_hour = datetime.now().hour
+    return start_hour <= current_hour < end_hour
