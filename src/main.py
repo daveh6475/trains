@@ -13,7 +13,6 @@ from luma.core.virtual import viewport, snapshot
 from open import isRun
 from typing import Any
 from luma.core.interface.serial import spi, noop
-from luma.core.render import canvas
 from luma.oled.device import ssd1322
 from luma.core.virtual import viewport, snapshot
 from luma.core.sprite_system import framerate_regulator
@@ -349,4 +348,3 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
-
