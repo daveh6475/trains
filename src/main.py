@@ -310,7 +310,7 @@ def drawSignage(device, width, height, data):
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
                        # might need to delete departures[0].toc 
-                       renderStations(firstDepartureDestinations, departures), interval=0.02)  
+                       renderStations(firstDepartureDestinations, departureStation, departures), interval=0.02)  #departurestation added by GPT
 
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
