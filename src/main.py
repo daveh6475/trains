@@ -369,12 +369,11 @@ try:
     else:
         raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
         
-    if len(departures) == 0:
-        noTrains = drawBlankSignage(device, width=width, height=height, departureStation=departureStation)
-        return noTrains
-        
+    if len(data[0]) == 0:
+        virtual = drawBlankSignage(
+            device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
     else:
-        virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
+        virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=data)
 
     timeAtStart = time.time()
     timeNow = time.time()
