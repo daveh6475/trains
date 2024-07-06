@@ -3,6 +3,9 @@ import sys
 import time
 import json
 import requests
+import cprofile #delete after
+import pstats #delete after
+import io #delete after
 
 from datetime import datetime
 from PIL import ImageFont, Image
