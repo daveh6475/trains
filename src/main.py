@@ -2,12 +2,13 @@ import os
 import sys
 import time
 import json
+import requests
 
 from datetime import datetime
 from PIL import ImageFont, Image
 from PIL.ImageFont import FreeTypeFont
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
-from trains import loadDeparturesForStationRTT, loadDestinationsForDepartureRTT, ProcessedDepartures, CallingPoints
+from trains import loadDeparturesForStationRTT, ProcessedDepartures, CallingPoints
 from luma.core.render import canvas
 from luma.core.virtual import viewport, snapshot
 from open import isRun
@@ -34,7 +35,6 @@ def makeFont(name: str, size: int) -> FreeTypeFont:
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
-
 def renderDestination(departure: ProcessedDepartures, font: FreeTypeFont, n: int = 0):
     departureTime = departure.aimed_departure_time
     destinationName = departure.destination_name
@@ -56,7 +56,6 @@ def renderDestination(departure: ProcessedDepartures, font: FreeTypeFont, n: int
 
     return drawText
 
-
 def renderServiceStatus(departure: ProcessedDepartures):
     def drawText(draw, width: int, height: int):
         train = ""
@@ -65,13 +64,13 @@ def renderServiceStatus(departure: ProcessedDepartures):
             train = "Cancelled"
         else:
             if isinstance(departure.expected_departure_time, str):
-                train = 'Exp '+ departure.expected_departure_time
+                train = 'Exp ' + departure.expected_departure_time
 
             if departure.expected_departure_time == departure.expected_departure_time:
                 train = "On time"
 
         w = int(draw.textlength(train, font))
-        draw.text((width-w,0), text=train, font=font, fill="yellow")
+        draw.text((width - w, 0), text=train, font=font, fill="yellow")
     return drawText
 
 def renderPlatform(departure: ProcessedDepartures):
@@ -89,26 +88,16 @@ def renderCallingAt(draw, width: int, height: int):
 
 def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     if len(stations) == 1:
-         calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
-        
+        calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
     else:
         calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
         calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
 
     calling_at_str += f"    (A {toc} service.)"
-
     return calling_at_str
 
 def renderStations(stations: list[CallingPoints], toc: str):
-
-    if len(stations) == 1:
-         calling_at_str = f"{stations[0].station} ({format_hhmm(stations[0].arrival_time)}) only."
-        
-    else:
-        calling_at_str = ", ".join([f"{call.station} ({format_hhmm(call.arrival_time)})" for call in stations[:-1]])
-        calling_at_str += f" and {stations[-1].station} ({format_hhmm(stations[-1].arrival_time)})."
-
-    calling_at_str += f"    (A {toc} service.)"
+    calling_at_str = get_stations_string(stations, toc)
 
     def drawText(draw, width: int, height: int):
         global stationRenderCount, pauseCount
@@ -138,9 +127,8 @@ def renderTime(draw, width: int, height: int):
 
     draw.text(((width - w1 - w2) / 2, 0), text="{}:{}".format(hour, minute),
               font=fontBoldLarge, fill="yellow")
-    draw.text((((width - w1 -w2) / 2) + w1, 5), text=":{}".format(second),
+    draw.text((((width - w1 - w2) / 2) + w1, 5), text=":{}".format(second),
               font=fontBoldTall, fill="yellow")
-
 
 def renderWelcomeTo(xOffset: int):
     def drawText(draw, width: int, height: int):
@@ -149,7 +137,6 @@ def renderWelcomeTo(xOffset: int):
 
     return drawText
 
-
 def renderDepartureStation(departureStation: str, xOffset: int):
     def draw(draw, width: int, height: int):
         text = departureStation
@@ -157,11 +144,33 @@ def renderDepartureStation(departureStation: str, xOffset: int):
 
     return draw
 
-
 def renderDots(draw, width: int, height: int):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
+def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
+    print(f"Requesting timetable data from: {timetableUrl}")
+    response = requests.get(url=timetableUrl, auth=(username, password))
+
+    # Check if the response is in JSON format
+    try:
+        calling_data = response.json()
+    except json.JSONDecodeError:
+        print(f"Error decoding JSON response. Response content: {response.text}")
+        return []
+
+    # Print the full JSON response for debugging
+    print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
+
+    # Ensure 'locations' key exists
+    if 'locations' not in calling_data:
+        print("Error: 'locations' key not found in the response.")
+        return []
+
+    # Temporarily bypass the need for 'locations'
+    # Example: If 'locations' key exists, you can process it here.
+    locations = calling_data.get('locations', [])
+    return [CallingPoints(station=loc['description'], arrival_time=loc.get('gbttBookedArrival', 'Unknown')) for loc in locations]
 
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[list[ProcessedDepartures], list[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
@@ -218,7 +227,6 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
     virtualViewport.add_hotspot(rowTime, (0, 50))
 
     return virtualViewport
-
 
 def drawSignage(device, width: int, height: int, data: tuple[list[ProcessedDepartures], list[CallingPoints], str]):
     global stationRenderCount, pauseCount
@@ -315,7 +323,6 @@ def drawSignage(device, width: int, height: int, data: tuple[list[ProcessedDepar
 
     return virtualViewport
 
-
 try:
     config = loadConfig()
 
@@ -369,33 +376,5 @@ except KeyboardInterrupt:
     pass
 except ValueError as err:
     print(f"Error: {err}")
-
-    #this is debug
-def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
-    print(f"Requesting timetable data from: {timetableUrl}")
-    response = requests.get(url=timetableUrl, auth=(username, password))
-
-    # Check if the response is in JSON format
-    try:
-        calling_data = response.json()
-    except json.JSONDecodeError:
-        print(f"Error decoding JSON response. Response content: {response.text}")
-        return []
-
-    # Print the full JSON response for debugging
-    print(f"Received response: {json.dumps(calling_data, indent=2)}")  # Pretty-print the JSON response
-
-    # Temporarily bypass the need for 'locations'
-    return []
-
-# Example usage
-journeyConfig = {
-    "departureStation": "FRM",
-    # Add other necessary journey config here
-}
-username = "your_username"
-password = "your_password"
-timetableUrl = "https://api.rtt.io/api/v1/json/service/L58427/2024/07/06"
-
-# Call the function
-loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl)
+except requests.RequestException as err:
+    print(f"Request Error: {err}")
