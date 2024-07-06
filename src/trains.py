@@ -45,16 +45,15 @@ def prepareServiceMessage(operator):
     return joinWithSpaces("A" if operator not in ['Elizabeth Line', 'Avanti West Coast'] else "An", operator, "Service")
 
 def prepareLocationName(location, show_departure_time):
-    location_name = removeBrackets(location['locationName'])
+    location_name = removeBrackets(location['description'])
     if not show_departure_time:
         return location_name
     else:
-        scheduled_time = location["st"]
+        scheduled_time = location["gbttBookedArrival"]
         try:
-            expected_time = location["et"]
+            expected_time = location["realtimeArrival"]
         except KeyError:
-            # as per api docs, it's 'at' if there isn't an 'et':
-            expected_time = location["at"]
+            expected_time = location["gbttBookedArrival"]
         departure_time = expected_time if isTime(expected_time) else scheduled_time
         formatted_departure = joinWith(["(", departure_time, ")"], "")
         return joinWithSpaces(location_name, formatted_departure)
@@ -83,25 +82,13 @@ def ProcessDepartures(journeyConfig, data):
     Services = []
 
     # get departure station name
-    departureStationName = data['locationName']
+    departureStationName = data['location']['name']
     print(f"Departure Station Name: {departureStationName}")
 
-    if 'trainServices' in data:
-        Services = data['trainServices']
+    if 'services' in data:
+        Services = data['services']
         if isinstance(Services, dict):  # if there's only one service, it comes out as a dict
             Services = [Services]       # but it needs to be a list with a single element
-
-        # if there are train and bus services from this station
-        if 'busServices' in data:
-            BusServices = data['busServices']
-            if isinstance(BusServices, dict):
-                BusServices = [BusServices]
-            Services = ArrivalOrder(Services + BusServices)  # sort the bus and train services into one list in order of scheduled arrival time
-
-    elif 'busServices' in data:
-        Services = data['busServices']
-        if isinstance(Services, dict):
-            Services = [Services]
 
     else:
         Services = None
@@ -112,29 +99,25 @@ def ProcessDepartures(journeyConfig, data):
     for servicenum, eachService in enumerate(Services):
         thisDeparture = {}
 
-        if 'platform' in eachService:
-            thisDeparture["platform"] = eachService['platform']
+        if 'platform' in eachService['locationDetail']:
+            thisDeparture["platform"] = eachService['locationDetail']['platform']
 
-        thisDeparture["aimed_departure_time"] = eachService["std"]
-        thisDeparture["expected_departure_time"] = eachService["etd"]
+        thisDeparture["aimed_departure_time"] = eachService['locationDetail']['gbttBookedDeparture']
+        thisDeparture["expected_departure_time"] = eachService['locationDetail'].get("realtimeDeparture", thisDeparture["aimed_departure_time"])
 
-        if 'length' in eachService:
-            thisDeparture["carriages"] = eachService["length"]
-        else:
-            thisDeparture["carriages"] = 0
+        thisDeparture["carriages"] = 0  # Default value since the API does not provide carriages info
 
-        if 'operator' in eachService:
-            thisDeparture["operator"] = eachService["operator"]
+        thisDeparture["operator"] = eachService.get("atocName", "")
 
-        if not isinstance(eachService['destination']['location'], list):    
-            thisDeparture["destination_name"] = removeBrackets(eachService['destination']['location']['locationName'])
+        if not isinstance(eachService['locationDetail']['destination'], list):    
+            thisDeparture["destination_name"] = removeBrackets(eachService['locationDetail']['destination'][0]['description'])
         else:  
-            DestinationList = [i['locationName'] for i in eachService['destination']['location']]
+            DestinationList = [i['description'] for i in eachService['locationDetail']['destination']]
             thisDeparture["destination_name"] = " & ".join([removeBrackets(i) for i in DestinationList])
 
-        if 'subsequentCallingPoints' in eachService:  
-            if not isinstance(eachService['subsequentCallingPoints']['callingPointList'], dict):
-                CallingPointList = eachService['subsequentCallingPoints']['callingPointList']
+        if 'subsequentCallingPoints' in eachService['locationDetail']:  
+            if isinstance(eachService['locationDetail']['subsequentCallingPoints'], list):
+                CallingPointList = eachService['locationDetail']['subsequentCallingPoints']
                 CallLists = []
                 CallListJoined = []
                 for sectionNum, eachSection in enumerate(CallingPointList):
@@ -151,16 +134,16 @@ def ProcessDepartures(journeyConfig, data):
                     prepareCarriagesMessage(thisDeparture["carriages"])
                 )
             else:  
-                if isinstance(eachService['subsequentCallingPoints']['callingPointList']['callingPoint'], dict):
+                if isinstance(eachService['locationDetail']['subsequentCallingPoints']['callingPoint'], dict):
                     thisDeparture["calling_at_list"] = joinWithSpaces(
-                        prepareLocationName(eachService['subsequentCallingPoints']['callingPointList']['callingPoint'], show_individual_departure_time),
+                        prepareLocationName(eachService['locationDetail']['subsequentCallingPoints']['callingPoint'], show_individual_departure_time),
                         "only.",
                         "  --  ",
                         prepareServiceMessage(thisDeparture["operator"]),
                         prepareCarriagesMessage(thisDeparture["carriages"])
                     )
                 else:  
-                    CallList = [prepareLocationName(i, show_individual_departure_time) for i in eachService['subsequentCallingPoints']['callingPointList']['callingPoint']]
+                    CallList = [prepareLocationName(i, show_individual_departure_time) for i in eachService['locationDetail']['subsequentCallingPoints']['callingPoint']]
                     thisDeparture["calling_at_list"] = joinWithSpaces(
                         joinwithCommas(CallList) + ".",
                         " --  ",
@@ -196,7 +179,7 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
     translated_departures = []
     td = date.today()
 
-    if data['services'] is None:
+    if 'services' not in data or data['services'] is None:
         return translated_departures, departureStation
 
     for item in data['services'][:5]:
@@ -228,7 +211,7 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
                 toc=toc
             )
         )
-    
+
     print(f"Translated departures: {translated_departures}")
     return translated_departures, departureStation
 
@@ -244,7 +227,7 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
             break
         index += 1
 
-    calling_at = []    
+    calling_at = []
     for loc in calling_data['locations'][index+1:]:
         calling_at.append(
             CallingPoints(loc['description'], loc["realtimeArrival"])
@@ -259,7 +242,7 @@ def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tup
         return [], [], journeyConfig['outOfHoursName']
 
     departures, stationName = loadDeparturesForStationRTT(journeyConfig, apiConfig["username"], apiConfig["password"])
-    
+
     print(f"Departures: {departures}")
     print(f"Station Name: {stationName}")
 
