@@ -133,7 +133,7 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
-def renderStations(stations: list[CallingPoints], toc: str):
+def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
         # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
     
@@ -308,9 +308,8 @@ def drawSignage(device, width, height, data):
         departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-    rowTwoB = snapshot(width - callingWidth, 10,
-                       # might need to delete departures[0].toc 
-                       renderStations(firstDepartureDestinations, departureStation, departures), interval=0.02)  #departurestation added by GPT
+   rowTwoB = snapshot(width - callingWidth, 10,
+                   renderStations(firstDepartureDestinations, departures[0].toc, departureStation), interval=0.02)
 
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
