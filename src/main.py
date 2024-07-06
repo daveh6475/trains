@@ -382,12 +382,11 @@ try:
                 data = loadDataRTT(config["rttApi"], config["journey"])
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation)
             else:
                 departureData = data[0]
                 nextStations = data[1]
                 station = data[2]
-                screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
                 virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=screenData)
                 # virtual = drawDebugScreen(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, showTime=True)
                 
