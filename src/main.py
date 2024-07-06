@@ -93,6 +93,7 @@ def renderCallingAt(draw, *_):
 bitmapRenderCache = {}
 
 def cachedBitmapText(text, font):
+    text = str(text)
     # cache the bitmap representation of the stations string
     nameTuple = font.getname()
     fontKey = ''
@@ -132,7 +133,7 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
-def renderStations(stations, toc):
+def renderStations(stations: list[CallingPoints], toc: str):
     calling_at_str = get_stations_string(stations, toc)
     def drawText(draw, *_):
         global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
@@ -140,7 +141,7 @@ def renderStations(stations, toc):
         if len(stations) == stationRenderCount - 5:
             stationRenderCount = 0
 
-        txt_width, txt_height, bitmap = cachedBitmapText(stations, font)
+        txt_width, txt_height, bitmap = cachedBitmapText(calling_at_str, font)
 
         if hasElevated:
             # slide the bitmap left until it's fully out of view
