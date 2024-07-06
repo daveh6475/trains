@@ -269,7 +269,7 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
     return virtualViewport
 
 def drawSignage(device, width, height, data):
-   global stationRenderCount, pauseCount
+    global stationRenderCount, pauseCount
 
     virtualViewport = viewport(device, width=width, height=height)
 
