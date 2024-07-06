@@ -257,7 +257,7 @@ def drawBlankSignage(device, width: int, height: int, departureStation: str):
     rowThree = snapshot(width, 10, renderDots, interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=0.1)
     
-     if len(virtualViewport._hotspots) > 0:
+    if len(virtualViewport._hotspots) > 0:
         for vhotspot, xy in virtualViewport._hotspots:
             virtualViewport.remove_hotspot(vhotspot, xy)
 
