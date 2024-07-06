@@ -387,8 +387,6 @@ try:
                 screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
                 virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=screenData)
                 # virtual = drawDebugScreen(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, showTime=True)
-            else:
-                device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
                 
             timeAtStart = time.time()
         timeNow = time.time()
