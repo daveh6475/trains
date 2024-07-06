@@ -83,7 +83,6 @@ def ProcessDepartures(journeyConfig, data):
 
     # get departure station name
     departureStationName = data['location']['name']
-    print(f"Departure Station Name: {departureStationName}")
 
     if 'services' in data:
         Services = data['services']
@@ -170,11 +169,9 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
         raise ValueError("Please complete the rttApi section of your config.json file")
 
     departureStation = journeyConfig["departureStation"]
-    print(f"Requesting departures for station: {departureStation}")
 
     response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
     data = response.json()
-    print(f"Response data: {data}")
 
     translated_departures = []
     td = date.today()
@@ -212,14 +209,11 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
             )
         )
 
-    print(f"Translated departures: {translated_departures}")
     return translated_departures, departureStation
 
 def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> List[CallingPoints]:
-    print(f"Requesting timetable URL: {timetableUrl}")
     r = requests.get(url=timetableUrl, auth=(username, password))
     calling_data = r.json()
-    print(f"Calling data: {calling_data}")
 
     index = 0
     for loc in calling_data['locations']:
@@ -233,7 +227,6 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
             CallingPoints(loc['description'], loc["realtimeArrival"])
         )
 
-    print(f"Calling at: {calling_at}")
     return calling_at
 
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
@@ -243,15 +236,10 @@ def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tup
 
     departures, stationName = loadDeparturesForStationRTT(journeyConfig, apiConfig["username"], apiConfig["password"])
 
-    print(f"Departures: {departures}")
-    print(f"Station Name: {stationName}")
-
     if len(departures) == 0:
         return [], [], journeyConfig['outOfHoursName']
 
     firstDepartureDestinations = loadDestinationsForDepartureRTT(journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
-
-    print(f"First Departure Destinations: {firstDepartureDestinations}")
 
     return departures, firstDepartureDestinations, stationName
 
