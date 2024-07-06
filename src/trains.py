@@ -219,7 +219,7 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     departure_crs = journeyConfig["departureStation"]
     index = 0
     for loc in calling_data['locations']:
-        if loc['crs'] == departure_crs:
+        if loc['crs'].strip().lower() == departure_crs.strip().lower():
             break
         index += 1
 
