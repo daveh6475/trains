@@ -308,8 +308,8 @@ def drawSignage(device, width, height, data):
         departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-   rowTwoB = snapshot(width - callingWidth, 10,
-                   renderStations(firstDepartureDestinations, departures[0].toc, departureStation), interval=0.02)
+    rowTwoB = snapshot(width - callingWidth, 10,
+                    renderStations(firstDepartureDestinations, departures[0].toc, departureStation), interval=0.02)
 
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
