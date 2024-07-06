@@ -8,7 +8,7 @@ import pstats #delete after
 import io #delete after
 
 from datetime import datetime
-from PIL import ImageFont, Image
+from PIL import ImageFont, Image, ImageDraw
 from PIL.ImageFont import FreeTypeFont
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
 from trains import loadDeparturesForStationRTT, ProcessedDepartures, CallingPoints
