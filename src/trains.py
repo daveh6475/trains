@@ -215,11 +215,16 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     r = requests.get(url=timetableUrl, auth=(username, password))
     calling_data = r.json()
 
+    # Find the index of the departure station by CRS code
+    departure_crs = journeyConfig["departureStation"]
     index = 0
     for loc in calling_data['locations']:
-        if loc['crs'] == journeyConfig["departureStation"]:
+        if loc['crs'] == departure_crs:
             break
         index += 1
+
+    # Debug: print the CRS and station names for verification
+    print(f"Departure CRS: {departure_crs}, Stations: {[loc['crs'] for loc in calling_data['locations'][index+1:]]}")
 
     calling_at = []
     for loc in calling_data['locations'][index+1:]:
@@ -228,6 +233,7 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
         )
 
     return calling_at
+
 
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
