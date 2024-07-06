@@ -24,6 +24,8 @@ from luma.core.sprite_system import framerate_regulator
 
 import socket, re, uuid
 
+global toc
+
 DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
 
@@ -133,7 +135,7 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
     calling_at_str += f"    (A {toc} service.)"
     return calling_at_str
 
-def renderStations(stations):
+def renderStations(stations, toc):
     calling_at_str = get_stations_string(stations, toc)
     def drawText(draw, *_):
         global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
@@ -302,7 +304,7 @@ def drawSignage(device, width, height, data):
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
                        # might need to delete departures[0].toc 
-                       renderStations(firstDepartureDestinations, departures[0].toc), interval=0.02)  
+                       renderStations(firstDepartureDestinations, departures), interval=0.02)  
 
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(
