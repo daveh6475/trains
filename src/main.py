@@ -120,15 +120,21 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
 
 
 def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
+    # Debug: print the original station list
+    print(f"Original calling points: {[s.station for s in stations]}")
+
+    # Normalize departure station name
+    departure_station = departure_station.strip().lower()
+
     # Find the index of the departure station in the list
-    departure_index = next((index for (index, d) in enumerate(stations) if d.station == departure_station), None)
+    departure_index = next((index for (index, d) in enumerate(stations) if d.station.strip().lower() == departure_station), None)
 
     # If the departure station is found, filter the list to include only stations after it
     if departure_index is not None:
         stations = stations[departure_index + 1:]
 
-    # Debug: print the stations to be displayed
-    print(f"Calling points after {departure_station}: {[s.station for s in stations]}")
+    # Debug: print the filtered station list
+    print(f"Filtered calling points: {[s.station for s in stations]}")
 
     calling_at_str = get_stations_string(stations, toc)
 
@@ -158,6 +164,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
             else:
                 pixelsUp = pixelsUp + 1
     return drawText
+
 
 
 
