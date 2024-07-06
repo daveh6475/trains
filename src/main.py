@@ -69,7 +69,8 @@ def renderServiceStatus(departure: ProcessedDepartures):
                 train = 'Exp ' + departure.expected_departure_time
             if departure.expected_departure_time == departure.expected_departure_time:
                 train = "On time"
-         w, _, bitmap = cachedBitmapText(train, font)
+        
+        w, _, bitmap = cachedBitmapText(train, font)
         draw.bitmap((width - w, 0), bitmap, fill="yellow")
     return drawText
 
