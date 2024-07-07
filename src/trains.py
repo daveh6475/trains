@@ -199,47 +199,65 @@ def ProcessDepartures(journeyConfig, APIOut):
     return Departures, departureStationName
 
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
-    if journeyConfig["departureStation"] == "":
-        raise ValueError("Please configure the departureStation environment variable")
+    stationCode = journeyConfig["station"]
+    url = apiConfig["apiUrl"]
 
-    if apiKey is None:
-        raise ValueError("Please configure the apiKey environment variable")
+    headers = {
+        "Content-Type": "text/xml",
+        "SOAPAction": "http://thalesgroup.com/RTTI/2012-01-13/ldb/GetDepBoardWithDetails",
+    }
 
-    destinationStation = journeyConfig["destinationStation"] or ""
-    timeOffset = journeyConfig["timeOffset"] or "0"
+    body = f"""<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:ldb="http://thalesgroup.com/RTTI/2012-01-13/ldb/types"
+               xmlns:typ="http://thalesgroup.com/RTTI/2010-11-01/ldb/types">
+                 <soap:Header>
+                   <typ:AccessToken>
+                     <typ:TokenValue>{apiKey}</typ:TokenValue>
+                   </typ:AccessToken>
+                 </soap:Header>
+                 <soap:Body>
+                   <ldb:GetDepBoardWithDetailsRequest>
+                     <ldb:numRows>{rows}</ldb:numRows>
+                     <ldb:crs>{stationCode}</ldb:crs>
+                   </ldb:GetDepBoardWithDetailsRequest>
+                 </soap:Body>
+               </soap:Envelope>"""
 
-    APIRequest = f"""
-    <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
-    <x:Header>
-        <typ4:AccessToken><typ4:TokenValue>{apiKey}</typ4:TokenValue></typ4:AccessToken>
-    </x:Header>
-    <x:Body>
-        <ldb:GetDepBoardWithDetailsRequest>
-            <ldb:numRows>{rows}</ldb:numRows>
-            <ldb:crs>{journeyConfig["departureStation"]}</ldb:crs>
-            <ldb:timeOffset>{timeOffset}</ldb:timeOffset>
-            <ldb:filterCrs>{destinationStation}</ldb:filterCrs>
-            <ldb:filterType>to</ldb:filterType>
-            <ldb:timeWindow>120</ldb:timeWindow>
-        </ldb:GetDepBoardWithDetailsRequest>
-    </x:Body>
-    </x:Envelope>"""
+    response = requests.post(url, data=body, headers=headers)
+    response.raise_for_status()
 
-    headers = {'Content-Type': 'text/xml'}
-    apiURL = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
+    print(f"API Response:\n{response.text}")  # Debugging statement
+
+    root = ET.fromstring(response.content)
+    namespace = {'soap': 'http://schemas.xmlsoap.org/soap/envelope/', 
+                 'ldb': 'http://thalesgroup.com/RTTI/2012-01-13/ldb/types'}
 
     try:
-        response = requests.post(apiURL, data=APIRequest, headers=headers)
-        response.raise_for_status()
-        APIOut = response.text
-        print(f"API Response:\n{APIOut}")  # Debug statement to print the XML response
-    except requests.RequestException as e:
-        print(f"API request failed: {e}")
-        return None, None
+        stationName = root.find('.//ldb:locationName', namespace).text
+        services = root.findall('.//ldb:service', namespace)
+        departures = []
 
-    Departures, departureStationName = ProcessDepartures(journeyConfig, APIOut)
+        for service in services:
+            departure = {
+                "aimed_departure_time": service.find('.//ldb:std', namespace).text,
+                "expected_departure_time": service.find('.//ldb:etd', namespace).text,
+                "platform": service.find('.//ldb:platform', namespace).text if service.find('.//ldb:platform', namespace) is not None else "",
+                "destination_name": service.find('.//ldb:destination//ldb:location//ldb:locationName', namespace).text,
+                "calling_at_list": [cp.find('.//ldb:locationName', namespace).text for cp in service.findall('.//ldb:subsequentCallingPoints//ldb:callingPoint', namespace)]
+            }
+            departures.append(departure)
 
-    return Departures, departureStationName
+        print(f"Station Name: {stationName}")
+        print(f"Departures: {departures}")
+        return departures, stationName
+
+    except AttributeError as err:
+        print(f"Attribute Error: {err}")
+        print("Could not find one or more required elements in the XML response.")
+        return None, "Unknown Station"
+    except Exception as err:
+        print(f"Unexpected Error: {err}")
+        return None, "Unknown Station"
 
 def ProcessDepartures(journeyConfig, APIOut):
     show_individual_departure_time = journeyConfig.get("individualStationDepartureTime", False)
