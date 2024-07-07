@@ -198,9 +198,12 @@ def ProcessDepartures(journeyConfig, APIOut):
 
     return Departures, departureStationName
 
+import requests
+from xml.etree import ElementTree as ET
+
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
     try:
-        stationCode = journeyConfig["station"]
+        stationCode = journeyConfig["departureStation"]
     except KeyError as e:
         print(f"Key Error: {e} in journeyConfig: {journeyConfig}")
         return None, "Unknown Station"
@@ -272,8 +275,13 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
 if __name__ == "__main__":
     apiKey = 'bda3de70-1f9e-4d80-a293-33c1900eb18d'
     journeyConfig = {
-        "station": "FRM",
-        "apiUrl": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
+        "departureStation": "FRM",
+        "apiUrl": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx",
+        "destinationStation": None,
+        "stationAbbr": {"International": "Intl."},
+        "outOfHoursName": "",
+        "timeOffset": "0",
+        "screen1Platform": None
     }
     rows = 10
 
