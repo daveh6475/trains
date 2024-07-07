@@ -204,17 +204,15 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
 
         toc = item["atocName"]
 
-        # Look for the number of coaches if available
-        coaches = item['locationDetail'].get('coaches', 0)
-
         translated_departures.append(
             ProcessedDepartures(
                 uid=uid, destination_name=destination_name, aimed_departure_time=aimed_departure_time,
                 expected_departure_time=expected_departure_time, status=status, mode=mode, platform=platform,
                 timetable_url=f"https://api.rtt.io/api/v1/json/service/{uid}/{td.year}/{td.month:02}/{td.day:02}",
-                toc=toc, coaches=coaches
+                toc=toc
             )
         )
 
     return translated_departures, departureStation
+
 
