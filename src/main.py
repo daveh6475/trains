@@ -11,7 +11,7 @@ from trains import loadDeparturesForStationRTT, ProcessedDepartures, CallingPoin
 from luma.core.render import canvas
 from luma.core.virtual import viewport, snapshot
 from open import isRun
-from typing import Any
+from typing import Any, List
 from luma.core.interface.serial import spi, noop
 from luma.oled.device import ssd1322
 from luma.core.virtual import viewport, snapshot
