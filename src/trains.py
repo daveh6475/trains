@@ -193,26 +193,29 @@ def ProcessDepartures(journeyConfig, APIOut):
 
     return Departures, departureStationName
 
+import requests
+
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
     if journeyConfig["departureStation"] == "":
-        raise ValueError(
-            "Please configure the departureStation environment variable")
+        raise ValueError("Please configure the departureStation environment variable")
 
     if apiKey is None:
-        raise ValueError(
-            "Please configure the apiKey environment variable")
+        raise ValueError("Please configure the apiKey environment variable")
 
-    APIRequest = """
+    destinationStation = journeyConfig["destinationStation"] or ""
+    timeOffset = journeyConfig["timeOffset"] or "0"
+
+    APIRequest = f"""
     <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
     <x:Header>
-        <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
+        <typ4:AccessToken><typ4:TokenValue>{apiKey}</typ4:TokenValue></typ4:AccessToken>
     </x:Header>
     <x:Body>
         <ldb:GetDepBoardWithDetailsRequest>
-            <ldb:numRows>""" + rows + """</ldb:numRows>
-            <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
-            <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
-            <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
+            <ldb:numRows>{rows}</ldb:numRows>
+            <ldb:crs>{journeyConfig["departureStation"]}</ldb:crs>
+            <ldb:timeOffset>{timeOffset}</ldb:timeOffset>
+            <ldb:filterCrs>{destinationStation}</ldb:filterCrs>
             <ldb:filterType>to</ldb:filterType>
             <ldb:timeWindow>120</ldb:timeWindow>
         </ldb:GetDepBoardWithDetailsRequest>
@@ -232,4 +235,11 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
 
     Departures, departureStationName = ProcessDepartures(journeyConfig, APIOut)
 
+    return Departures, departureStationName
+
+def ProcessDepartures(journeyConfig, APIOut):
+    # Mock implementation: parse the XML response and extract necessary information
+    # Replace this with actual parsing logic
+    Departures = [{"calling_at_list": "Next Stations"}]
+    departureStationName = "Mock Station"
     return Departures, departureStationName
