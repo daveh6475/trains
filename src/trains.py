@@ -203,26 +203,32 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
             "Please configure the apiKey environment variable")
 
     APIRequest = """
-        <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
-        <x:Header>
-            <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
-        </x:Header>
-        <x:Body>
-            <ldb:GetDepBoardWithDetailsRequest>
-                <ldb:numRows>""" + rows + """</ldb:numRows>
-                <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
-                <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
-                <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
-                <ldb:filterType>to</ldb:filterType>
-                <ldb:timeWindow>120</ldb:timeWindow>
-            </ldb:GetDepBoardWithDetailsRequest>
-        </x:Body>
+    <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
+    <x:Header>
+        <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
+    </x:Header>
+    <x:Body>
+        <ldb:GetDepBoardWithDetailsRequest>
+            <ldb:numRows>""" + rows + """</ldb:numRows>
+            <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
+            <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
+            <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
+            <ldb:filterType>to</ldb:filterType>
+            <ldb:timeWindow>120</ldb:timeWindow>
+        </ldb:GetDepBoardWithDetailsRequest>
+    </x:Body>
     </x:Envelope>"""
 
     headers = {'Content-Type': 'text/xml'}
     apiURL = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
 
-    APIOut = requests.post(apiURL, data=APIRequest, headers=headers).text
+    try:
+        response = requests.post(apiURL, data=APIRequest, headers=headers)
+        response.raise_for_status()
+        APIOut = response.text
+    except requests.RequestException as e:
+        print(f"API request failed: {e}")
+        return None, None
 
     Departures, departureStationName = ProcessDepartures(journeyConfig, APIOut)
 
