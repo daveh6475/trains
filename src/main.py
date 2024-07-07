@@ -209,9 +209,9 @@ def renderDots(draw, *_):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
-def loadData(apiConfig, journeyConfig): #add config if adding text below
+def loadData(apiConfig, journeyConfig):
     runHours = []
-    #if config['hoursPattern'].match(apiConfig['operatingHours']): # removed until i can add my own config
+    # if config['hoursPattern'].match(apiConfig['operatingHours']): # removed until i can add my own config
     #   runHours = [int(x) for x in apiConfig['operatingHours'].split('-')] # removed until i can add my own config
 
     if len(runHours) == 2 and isRun(runHours[0], runHours[1]) is False:
@@ -222,6 +222,9 @@ def loadData(apiConfig, journeyConfig): #add config if adding text below
     rows = "10"
 
     try:
+        print(f"API Key: {apiConfig['apiKey']}")  # Debug statement
+        print(f"Journey Config: {journeyConfig}")  # Debug statement
+        
         departures, stationName = loadDeparturesForStation(
             journeyConfig, apiConfig["apiKey"], rows)
 
@@ -234,6 +237,7 @@ def loadData(apiConfig, journeyConfig): #add config if adding text below
         print("Error: Failed to fetch data from OpenLDBWS")
         print(err.__context__)
         return False, False, journeyConfig['outOfHoursName']
+
 
 def drawStartup(device, width, height):
     virtualViewport = viewport(device, width=width, height=height)
