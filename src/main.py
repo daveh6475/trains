@@ -262,7 +262,7 @@ def drawBlankSignage(device, width, height, departureStation):
     global stationRenderCount, pauseCount
 
     welcomeSize = int(fontBold.getlength("Welcome to"))
-    stationSize = int(fontBold.getlength(departureStation))
+    stationSize = int(fontBold.getlength(departureStation or "Unknown Station"))
 
     device.clear()
 
@@ -271,7 +271,7 @@ def drawBlankSignage(device, width, height, departureStation):
     rowOne = snapshot(width, 10, renderWelcomeTo(
         (width - welcomeSize) / 2), interval=config["refreshTime"])
     rowTwo = snapshot(width, 10, renderDepartureStation(
-        departureStation, (width - stationSize) / 2), interval=config["refreshTime"])
+        departureStation or "Unknown Station", (width - stationSize) / 2), interval=config["refreshTime"])
     rowThree = snapshot(width, 10, renderDots, interval=config["refreshTime"])
     # this will skip a second sometimes if set to 1, but a hotspot burns CPU
     # so set to snapshot of 0.1; you won't notice
@@ -287,6 +287,8 @@ def drawBlankSignage(device, width, height, departureStation):
     virtualViewport.add_hotspot(rowTime, (0, 50))
 
     return virtualViewport
+
+
 
 def platform_filter(departureData, platformNumber, station):
     platformDepartures = []
@@ -379,11 +381,11 @@ try:
 
     if data[0] is False:
         virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+            device, width=widgetWidth, height=widgetHeight, departureStation=data[2] or "Unknown Station")
         
         if config.get('dualScreen'):
             virtual1 = drawBlankSignage(
-                device1, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+                device1, width=widgetWidth, height=widgetHeight, departureStation=data[2] or "Unknown Station")
     else:
         departureData = data[0]
         nextStations = data[1]
@@ -402,7 +404,7 @@ try:
             
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2] or "Unknown Station")
             else:
                 departureData = data[0]
                 nextStations = data[1]
