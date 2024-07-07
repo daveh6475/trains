@@ -370,6 +370,7 @@ try:
     serial = spi(port=0)
     device = ssd1322(serial, mode="1", rotate=2)
     config = loadConfig()
+
     font = makeFont("Dot Matrix Regular.ttf", 10)
     fontBold = makeFont("Dot Matrix Bold.ttf", 10)
     fontBoldTall = makeFont("Dot Matrix Bold Tall.ttf", 10)
@@ -380,41 +381,42 @@ try:
     pauseCount = 0
     loop_count = 0
 
-    data = loadData(config["api"], config["journey"])
+    apiConfig = config["api"]
+    journeyConfig = config["journey"]
+
+    data = loadDeparturesForStation(journeyConfig, apiConfig, rows=10)
 
     if data[0] is False:
         virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+            device, width=widgetWidth, height=widgetHeight, departureStation=data[1])
         
         if config.get('dualScreen'):
             virtual1 = drawBlankSignage(
-                device1, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+                device1, width=widgetWidth, height=widgetHeight, departureStation=data[1])
     else:
         departureData = data[0]
         nextStations = data[1]
-        station = data[2]
+        station = data[1]
         
         screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
         virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
-        # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True)
 
     timeAtStart = time.time()
 
     while True:
         timeNow = time.time()
         if (timeNow - timeAtStart >= config["refreshTime"]):
-            data = loadData(config["api"], config["journey"])
+            data = loadDeparturesForStation(journeyConfig, apiConfig, rows=10)
             
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[1])
             else:
                 departureData = data[0]
                 nextStations = data[1]
-                station = data[2]
+                station = data[1]
                 screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
                 virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
-                # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True)
             
             timeAtStart = time.time()
         virtual.refresh()
@@ -425,3 +427,7 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
+except KeyError as err:
+    print(f"Key Error: {err}")
+except Exception as err:
+    print(f"Unexpected Error: {err}")
