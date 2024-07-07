@@ -240,9 +240,6 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
 
     return calling_at
 
-
-
-
 def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if not isRun(runHours[0], runHours[1]):
