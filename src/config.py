@@ -5,7 +5,7 @@ import json
 def parsePlatformData(platformData):
     return platformData if platformData not in ["null", "undefined"] else None
 
-def loadConfig(config_path='config.json'):
+def loadConfig(config_path='src/config.json'):
     # Load configuration from config.json file
     with open(config_path, 'r') as file:
         config = json.load(file)
