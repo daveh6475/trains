@@ -230,6 +230,7 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
         response = requests.post(apiURL, data=APIRequest, headers=headers)
         response.raise_for_status()
         APIOut = response.text
+        print(f"API Response:\n{APIOut}")  # Debug statement to print the XML response
     except requests.RequestException as e:
         print(f"API request failed: {e}")
         return None, None
@@ -245,7 +246,12 @@ def ProcessDepartures(journeyConfig, APIOut):
         'ldb': 'http://thalesgroup.com/RTTI/2017-10-01/ldb/'
     }
 
-    stationName = root.find('.//ldb:locationName', ns).text
+    locationNameElement = root.find('.//ldb:locationName', ns)
+    if locationNameElement is None:
+        print("Error: locationName element not found in the XML response.")
+        return None, None
+    stationName = locationNameElement.text
+
     services = root.findall('.//ldb:service', ns)
     departures = []
 
