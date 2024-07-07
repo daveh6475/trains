@@ -116,18 +116,13 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
 
 
 def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
-    print(f"Original calling points: {[s.station for s in stations]}")
 
     departure_station = departure_station.strip().lower()
 
     departure_index = next((index for (index, d) in enumerate(stations) if d.station.strip().lower() == departure_station), None)
 
-    print(f"Departure station: {departure_station}, Matched index: {departure_index}")
-
     if departure_index is not None:
         stations = stations[departure_index + 1:]
-
-    print(f"Filtered calling points: {[s.station for s in stations]}")
 
     calling_at_str = get_stations_string(stations, toc)
 
@@ -203,16 +198,12 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     r = requests.get(url=timetableUrl, auth=(username, password))
     calling_data = r.json()
 
-    print("API response from service:", json.dumps(calling_data, indent=2))
-
     departure_crs = journeyConfig["departureStation"].strip().lower()
     index = 0
     for loc in calling_data['locations']:
         if loc['crs'].strip().lower() == departure_crs:
             break
         index += 1
-
-    print(f"Departure CRS: {departure_crs}, Stations: {[loc['crs'] for loc in calling_data['locations'][index+1:]]}")
 
     calling_at = []
     for loc in calling_data['locations'][index+1:]:
