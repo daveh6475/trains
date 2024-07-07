@@ -174,8 +174,8 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
     response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
     data = response.json()
 
-    # Debug: Print the entire response from the API
-    print("API response from search:", json.dumps(data, indent=2))
+    # Print the entire API response for inspection
+    print("Full API response from search:", json.dumps(data, indent=2))
 
     translated_departures = []
     td = date.today()
@@ -204,13 +204,17 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
 
         toc = item["atocName"]
 
+        # Look for the number of coaches if available
+        coaches = item['locationDetail'].get('coaches', 0)
+
         translated_departures.append(
             ProcessedDepartures(
                 uid=uid, destination_name=destination_name, aimed_departure_time=aimed_departure_time,
                 expected_departure_time=expected_departure_time, status=status, mode=mode, platform=platform,
                 timetable_url=f"https://api.rtt.io/api/v1/json/service/{uid}/{td.year}/{td.month:02}/{td.day:02}",
-                toc=toc
+                toc=toc, coaches=coaches
             )
         )
 
     return translated_departures, departureStation
+
