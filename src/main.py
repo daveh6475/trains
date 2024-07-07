@@ -237,6 +237,9 @@ def loadData(apiConfig, journeyConfig):
         print(f"Key Error: {err}")
         print("An error occurred while trying to access a key in the data.")
         return False, False, journeyConfig['outOfHoursName']
+    except Exception as err:
+        print(f"Unexpected Error: {err}")
+        return False, False, journeyConfig['outOfHoursName']
 
 
 def drawStartup(device, width, height):
