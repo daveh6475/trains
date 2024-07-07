@@ -199,8 +199,13 @@ def ProcessDepartures(journeyConfig, APIOut):
     return Departures, departureStationName
 
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
-    stationCode = journeyConfig["station"]
-    url = apiConfig["apiUrl"]
+    try:
+        stationCode = journeyConfig["station"]
+    except KeyError as e:
+        print(f"Key Error: {e} in journeyConfig: {journeyConfig}")
+        return None, "Unknown Station"
+
+    url = journeyConfig["apiUrl"]  # Ensure this key exists in journeyConfig
 
     headers = {
         "Content-Type": "text/xml",
@@ -223,42 +228,63 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
                  </soap:Body>
                </soap:Envelope>"""
 
-    response = requests.post(url, data=body, headers=headers)
-    response.raise_for_status()
-
-    print(f"API Response:\n{response.text}")  # Debugging statement
-
-    root = ET.fromstring(response.content)
-    namespace = {'soap': 'http://schemas.xmlsoap.org/soap/envelope/', 
-                 'ldb': 'http://thalesgroup.com/RTTI/2012-01-13/ldb/types'}
-
     try:
-        stationName = root.find('.//ldb:locationName', namespace).text
-        services = root.findall('.//ldb:service', namespace)
-        departures = []
+        response = requests.post(url, data=body, headers=headers)
+        response.raise_for_status()
 
-        for service in services:
-            departure = {
-                "aimed_departure_time": service.find('.//ldb:std', namespace).text,
-                "expected_departure_time": service.find('.//ldb:etd', namespace).text,
-                "platform": service.find('.//ldb:platform', namespace).text if service.find('.//ldb:platform', namespace) is not None else "",
-                "destination_name": service.find('.//ldb:destination//ldb:location//ldb:locationName', namespace).text,
-                "calling_at_list": [cp.find('.//ldb:locationName', namespace).text for cp in service.findall('.//ldb:subsequentCallingPoints//ldb:callingPoint', namespace)]
-            }
-            departures.append(departure)
+        print(f"API Response:\n{response.text}")  # Debugging statement
 
-        print(f"Station Name: {stationName}")
-        print(f"Departures: {departures}")
-        return departures, stationName
+        root = ET.fromstring(response.content)
+        namespace = {'soap': 'http://schemas.xmlsoap.org/soap/envelope/', 
+                     'ldb': 'http://thalesgroup.com/RTTI/2012-01-13/ldb/types'}
 
-    except AttributeError as err:
-        print(f"Attribute Error: {err}")
-        print("Could not find one or more required elements in the XML response.")
+        try:
+            stationName = root.find('.//ldb:locationName', namespace).text
+            services = root.findall('.//ldb:service', namespace)
+            departures = []
+
+            for service in services:
+                departure = {
+                    "aimed_departure_time": service.find('.//ldb:std', namespace).text,
+                    "expected_departure_time": service.find('.//ldb:etd', namespace).text,
+                    "platform": service.find('.//ldb:platform', namespace).text if service.find('.//ldb:platform', namespace) is not None else "",
+                    "destination_name": service.find('.//ldb:destination//ldb:location//ldb:locationName', namespace).text,
+                    "calling_at_list": [cp.find('.//ldb:locationName', namespace).text for cp in service.findall('.//ldb:subsequentCallingPoints//ldb:callingPoint', namespace)]
+                }
+                departures.append(departure)
+
+            print(f"Station Name: {stationName}")
+            print(f"Departures: {departures}")
+            return departures, stationName
+
+        except AttributeError as err:
+            print(f"Attribute Error: {err}")
+            print("Could not find one or more required elements in the XML response.")
+            return None, "Unknown Station"
+        except Exception as err:
+            print(f"Unexpected Error: {err}")
+            return None, "Unknown Station"
+    except requests.RequestException as e:
+        print(f"Request Error: {e}")
         return None, "Unknown Station"
-    except Exception as err:
-        print(f"Unexpected Error: {err}")
-        return None, "Unknown Station"
 
+# Example usage
+if __name__ == "__main__":
+    apiKey = 'bda3de70-1f9e-4d80-a293-33c1900eb18d'
+    journeyConfig = {
+        "station": "FRM",
+        "apiUrl": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
+    }
+    rows = 10
+
+    departures, stationName = loadDeparturesForStation(journeyConfig, apiKey, rows)
+    if departures is not None:
+        print(f"Departures from {stationName}:")
+        for departure in departures:
+            print(departure)
+    else:
+        print(f"Failed to load departures for station: {stationName}")
+        
 def ProcessDepartures(journeyConfig, APIOut):
     show_individual_departure_time = journeyConfig.get("individualStationDepartureTime", False)
     APIElements = xmltodict.parse(APIOut)
