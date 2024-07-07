@@ -3,7 +3,6 @@ import sys
 import time
 import json
 import requests
-
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
@@ -235,9 +234,9 @@ def loadData(apiConfig, journeyConfig):
         print(err.__context__)
         return False, False, journeyConfig['outOfHoursName']
     except KeyError as err:
-        print(f"KeyError: {err}")
-        print("API Response did not contain expected data.")
-        return False, False, "Unknown Station"
+        print(f"Key Error: {err}")
+        print("An error occurred while trying to access a key in the data.")
+        return False, False, journeyConfig['outOfHoursName']
 
 
 def drawStartup(device, width, height):
@@ -265,8 +264,6 @@ def drawStartup(device, width, height):
 def drawBlankSignage(device, width, height, departureStation):
     global stationRenderCount, pauseCount
 
-    departureStation = departureStation or "Unknown Station"
-
     welcomeSize = int(fontBold.getlength("Welcome to"))
     stationSize = int(fontBold.getlength(departureStation))
 
@@ -293,8 +290,6 @@ def drawBlankSignage(device, width, height, departureStation):
     virtualViewport.add_hotspot(rowTime, (0, 50))
 
     return virtualViewport
-
-
 
 def platform_filter(departureData, platformNumber, station):
     platformDepartures = []
@@ -330,7 +325,6 @@ def drawSignage(device, width, height, data):
         noTrains = drawBlankSignage(device, width=width, height=height, departureStation=departureStation)
         return noTrains
     firstFont = font
-        #if config['firstDepartureBold']: #again, add if config made
     firstFont = fontBold
     
     rowOneA = snapshot(width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=10)
@@ -428,6 +422,3 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
-except KeyError as err:
-    print(f"Key Error: {err}")
-    print("An error occurred while trying to access a key in the data.")
