@@ -374,8 +374,23 @@ try:
     pauseCount = 0
     loop_count = 0
     
-    if config["apiMethod"] == 'rtt':
-        data = loadDataRTT(config["rttApi"], config["journey"])
+data = loadData(config["api"], config["journey"], config)
+
+if data[0] is False:
+    virtual = drawBlankSignage(
+        device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+    
+    if config['dualScreen']:
+        virtual1 = drawBlankSignage(
+            device1, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+else:
+    departureData = data[0]
+    nextStations = data[1]
+    station = data[2]
+    
+    screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
+    virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
+    # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True
     else:
         raise Exception(f"Unsupported apiMethod: {config['apiMethod']}")
         
@@ -386,24 +401,24 @@ try:
         virtual = drawSignage(device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, data=data)
     timeAtStart = time.time()
     timeNow = time.time()
-    while True:
-        if (timeNow - timeAtStart >= config["refreshTime"]):
-            if config["apiMethod"] == 'rtt':
-                data = loadDataRTT(config["rttApi"], config["journey"])
-            if len(data[0]) == 0:
-                virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
-            else:
-                departureData = data[0]
-                nextStations = data[1]
-                station = data[2]
-                screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
-                virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
-                # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True)
-                
-            timeAtStart = time.time()
-        timeNow = time.time()
-        virtual.refresh()
+while True:
+    timeNow = time.time()
+    if (timeNow - timeAtStart >= config["refreshTime"]):
+        data = loadData(config["api"], config["journey"], config)
+        
+        if len(data[0]) == 0:
+            virtual = drawBlankSignage(
+                device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
+        else:
+            departureData = data[0]
+            nextStations = data[1]
+            station = data[2]
+            screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
+            virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
+            # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True)
+        
+        timeAtStart = time.time()
+    virtual.refresh()
         
 except KeyboardInterrupt:
     pass
