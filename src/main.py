@@ -120,23 +120,17 @@ def get_stations_string(stations: list[CallingPoints], toc: str) -> str:
 
 
 def renderStations(stations: list[CallingPoints], toc: str, departure_station: str):
-    # Debug: print the original station list
     print(f"Original calling points: {[s.station for s in stations]}")
 
-    # Normalize departure station name
     departure_station = departure_station.strip().lower()
 
-    # Find the index of the departure station in the list
     departure_index = next((index for (index, d) in enumerate(stations) if d.station.strip().lower() == departure_station), None)
 
-    # Debug: print the matched index and station for verification
     print(f"Departure station: {departure_station}, Matched index: {departure_index}")
 
-    # If the departure station is found, filter the list to include only stations after it
     if departure_index is not None:
         stations = stations[departure_index + 1:]
 
-    # Debug: print the filtered station list
     print(f"Filtered calling points: {[s.station for s in stations]}")
 
     calling_at_str = get_stations_string(stations, toc)
@@ -147,7 +141,6 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
             stationRenderCount = 0
         txt_width, txt_height, bitmap = cachedBitmapText(calling_at_str, font)
         if hasElevated:
-            # slide the bitmap left until it's fully out of view
             draw.bitmap((pixelsLeft - 1, 0), bitmap, fill="yellow")
             if -pixelsLeft > txt_width and pauseCount < 8:
                 pauseCount += 1
@@ -157,7 +150,6 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
                 pauseCount = 0
                 pixelsLeft = pixelsLeft - 1
         else:
-            # slide the bitmap up from the bottom of its viewport until it's fully in view
             draw.bitmap((0, txt_height - pixelsUp), bitmap, fill="yellow")
             if pixelsUp == txt_height:
                 pauseCount += 1
@@ -167,6 +159,7 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
             else:
                 pixelsUp = pixelsUp + 1
     return drawText
+
 
 
 def renderTime(draw, width, *_):
