@@ -72,7 +72,11 @@ def ProcessDepartures(journeyConfig, APIOut):
     Services = []
 
     # get departure station name
-    departureStationName = APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']['lt4:locationName']
+    try:
+        departureStationName = APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']['lt4:locationName']
+    except KeyError:
+        print("Error: locationName element not found in the XML response.")
+        return None, None
 
     # if there are only train services from this station
     if 'lt7:trainServices' in APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']:
@@ -193,8 +197,6 @@ def ProcessDepartures(journeyConfig, APIOut):
         Departures[servicenum] = thisDeparture
 
     return Departures, departureStationName
-
-import requests
 
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
     if journeyConfig["departureStation"] == "":
