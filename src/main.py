@@ -234,6 +234,10 @@ def loadData(apiConfig, journeyConfig):
         print("Error: Failed to fetch data from OpenLDBWS")
         print(err.__context__)
         return False, False, journeyConfig['outOfHoursName']
+    except KeyError as err:
+        print(f"KeyError: {err}")
+        print("API Response did not contain expected data.")
+        return False, False, "Unknown Station"
 
 
 def drawStartup(device, width, height):
@@ -261,8 +265,10 @@ def drawStartup(device, width, height):
 def drawBlankSignage(device, width, height, departureStation):
     global stationRenderCount, pauseCount
 
+    departureStation = departureStation or "Unknown Station"
+
     welcomeSize = int(fontBold.getlength("Welcome to"))
-    stationSize = int(fontBold.getlength(departureStation or "Unknown Station"))
+    stationSize = int(fontBold.getlength(departureStation))
 
     device.clear()
 
@@ -271,7 +277,7 @@ def drawBlankSignage(device, width, height, departureStation):
     rowOne = snapshot(width, 10, renderWelcomeTo(
         (width - welcomeSize) / 2), interval=config["refreshTime"])
     rowTwo = snapshot(width, 10, renderDepartureStation(
-        departureStation or "Unknown Station", (width - stationSize) / 2), interval=config["refreshTime"])
+        departureStation, (width - stationSize) / 2), interval=config["refreshTime"])
     rowThree = snapshot(width, 10, renderDots, interval=config["refreshTime"])
     # this will skip a second sometimes if set to 1, but a hotspot burns CPU
     # so set to snapshot of 0.1; you won't notice
@@ -381,11 +387,11 @@ try:
 
     if data[0] is False:
         virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[2] or "Unknown Station")
+            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
         
         if config.get('dualScreen'):
             virtual1 = drawBlankSignage(
-                device1, width=widgetWidth, height=widgetHeight, departureStation=data[2] or "Unknown Station")
+                device1, width=widgetWidth, height=widgetHeight, departureStation=data[2])
     else:
         departureData = data[0]
         nextStations = data[1]
@@ -404,7 +410,7 @@ try:
             
             if len(data[0]) == 0:
                 virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2] or "Unknown Station")
+                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[2])
             else:
                 departureData = data[0]
                 nextStations = data[1]
@@ -422,3 +428,6 @@ except ValueError as err:
     print(f"Error: {err}")
 except requests.RequestException as err:
     print(f"Request Error: {err}")
+except KeyError as err:
+    print(f"Key Error: {err}")
+    print("An error occurred while trying to access a key in the data.")
