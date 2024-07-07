@@ -217,7 +217,7 @@ def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str
     calling_at = []
     for loc in calling_data['locations'][index+1:]:
         calling_at.append(
-            CallingPoints(loc['description'], loc["realtimeArrival"])
+            CallingPoints(loc['description'], loc.get("realtimeArrival", loc.get("gbttBookedArrival", "Unknown")))
         )
 
     return calling_at
