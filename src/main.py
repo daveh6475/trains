@@ -211,19 +211,16 @@ def renderDots(draw, *_):
 
 def loadData(apiConfig, journeyConfig):
     runHours = []
-    # if config['hoursPattern'].match(apiConfig['operatingHours']): # removed until i can add my own config
-    #   runHours = [int(x) for x in apiConfig['operatingHours'].split('-')] # removed until i can add my own config
 
     if len(runHours) == 2 and isRun(runHours[0], runHours[1]) is False:
         return False, False, journeyConfig['outOfHoursName']
 
-    # set rows to 10 (max allowed) to get as many departure as poss
-    # leaving as a variable so this can be updated if the API does
     rows = "10"
 
     try:
+        print(f"API Config: {apiConfig}")  # Debug statement
         print(f"API Key: {apiConfig['apiKey']}")  # Debug statement
-        print(f"Journey Config: {journeyConfig}")  # Debug statement
+        print(f"API URL: {apiConfig.get('apiUrl')}")  # Debug statement
         
         departures, stationName = loadDeparturesForStation(
             journeyConfig, apiConfig["apiKey"], rows)
@@ -384,7 +381,7 @@ try:
         virtual = drawBlankSignage(
             device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
         
-        if config['dualScreen']:
+        if config.get('dualScreen'):
             virtual1 = drawBlankSignage(
                 device1, width=widgetWidth, height=widgetHeight, departureStation=data[2])
     else:
@@ -397,7 +394,6 @@ try:
         # virtual = drawDebugScreen(device, width=widgetWidth, height=widgetHeight, showTime=True)
 
     timeAtStart = time.time()
-    timeNow = time.time()
 
     while True:
         timeNow = time.time()
