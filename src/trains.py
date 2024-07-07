@@ -1,6 +1,6 @@
 import requests
 import re
-import json
+import json  # Ensure this line is included
 from datetime import date
 from dataclasses import dataclass
 from typing import Any, List, Tuple
@@ -214,46 +214,3 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
         )
 
     return translated_departures, departureStation
-
-
-def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> List[CallingPoints]:
-    r = requests.get(url=timetableUrl, auth=(username, password))
-    calling_data = r.json()
-
-    # Debug: Print the entire response from the API
-    print("API response from service:", json.dumps(calling_data, indent=2))
-
-    departure_crs = journeyConfig["departureStation"].strip().lower()
-    index = 0
-    for loc in calling_data['locations']:
-        if loc['crs'].strip().lower() == departure_crs:
-            break
-        index += 1
-
-    print(f"Departure CRS: {departure_crs}, Stations: {[loc['crs'] for loc in calling_data['locations'][index+1:]]}")
-
-    calling_at = []
-    for loc in calling_data['locations'][index+1:]:
-        calling_at.append(
-            CallingPoints(loc['description'], loc["realtimeArrival"])
-        )
-
-    return calling_at
-
-def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
-    runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if not isRun(runHours[0], runHours[1]):
-        return [], [], journeyConfig['outOfHoursName']
-
-    departures, stationName = loadDeparturesForStationRTT(journeyConfig, apiConfig["username"], apiConfig["password"])
-
-    if len(departures) == 0:
-        return [], [], journeyConfig['outOfHoursName']
-
-    firstDepartureDestinations = loadDestinationsForDepartureRTT(journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
-
-    return departures, firstDepartureDestinations, stationName
-
-def isRun(start_hour, end_hour):
-    current_hour = datetime.now().hour
-    return start_hour <= current_hour < end_hour
