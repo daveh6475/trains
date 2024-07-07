@@ -80,25 +80,21 @@ bitmapRenderCache = {}
 
 def cachedBitmapText(text, font):
     text = str(text)
-    # cache the bitmap representation of the stations string
     nameTuple = font.getname()
     fontKey = ''
     for item in nameTuple:
         fontKey = fontKey + item
     key = text + fontKey
     if key in bitmapRenderCache:
-        # found in cache; re-use it
         pre = bitmapRenderCache[key]
         bitmap = pre['bitmap']
         txt_width = pre['txt_width']
         txt_height = pre['txt_height']
     else:
-        # not cached; create a new image containing the string as a monochrome bitmap
         _, _, txt_width, txt_height = font.getbbox(text)
         bitmap = Image.new('L', [txt_width, txt_height], color=0)
         pre_render_draw = ImageDraw.Draw(bitmap)
         pre_render_draw.text((0, 0), text=text, font=font, fill=255)
-        # save to render cache
         bitmapRenderCache[key] = {'bitmap': bitmap, 'txt_width': txt_width, 'txt_height': txt_height}
     return txt_width, txt_height, bitmap
 
@@ -161,7 +157,6 @@ def renderStations(stations: list[CallingPoints], toc: str, departure_station: s
     return drawText
 
 
-
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
@@ -173,9 +168,7 @@ def renderTime(draw, width, *_):
 
 def renderDebugScreen(lines):
     def drawDebug(draw, *_):
-        # draw a box
         draw.rectangle((1, 1, 254, 45), outline="yellow", fill=None)
-        # coords for each line of text
         coords = {
             '1A': (5, 5),
             '1B': (45, 5),
@@ -185,7 +178,6 @@ def renderDebugScreen(lines):
             '3B': (45, 31),
             '3C': (140, 31)
         }
-        # loop through lines and check if cached
         for key, text in lines.items():
             w, _, bitmap = cachedBitmapText(text, font)
             draw.bitmap(coords[key], bitmap, fill="yellow")        
@@ -207,37 +199,42 @@ def renderDots(draw, *_):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
-def loadDestinationsForDepartureRTT(journeyConfig, username, password, timetableUrl):
-    response = requests.get(url=timetableUrl, auth=(username, password))
-    try:
-        calling_data = response.json()
-    except json.JSONDecodeError:
-        return []
-    if 'locations' not in calling_data:
-        return []
-    locations = calling_data.get('locations', [])
-    return [CallingPoints(station=loc['description'], arrival_time=loc.get('gbttBookedArrival', 'Unknown')) for loc in locations]
+def loadDestinationsForDepartureRTT(journeyConfig: dict[str, Any], username: str, password: str, timetableUrl: str) -> List[CallingPoints]:
+    r = requests.get(url=timetableUrl, auth=(username, password))
+    calling_data = r.json()
 
-def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> tuple[list[ProcessedDepartures], list[CallingPoints], str]:
+    print("API response from service:", json.dumps(calling_data, indent=2))
+
+    departure_crs = journeyConfig["departureStation"].strip().lower()
+    index = 0
+    for loc in calling_data['locations']:
+        if loc['crs'].strip().lower() == departure_crs:
+            break
+        index += 1
+
+    print(f"Departure CRS: {departure_crs}, Stations: {[loc['crs'] for loc in calling_data['locations'][index+1:]]}")
+
+    calling_at = []
+    for loc in calling_data['locations'][index+1:]:
+        calling_at.append(
+            CallingPoints(loc['description'], loc["realtimeArrival"])
+        )
+
+    return calling_at
+
+def loadDataRTT(apiConfig: dict[str, Any], journeyConfig: dict[str, Any]) -> Tuple[List[ProcessedDepartures], List[CallingPoints], str]:
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if isRun(runHours[0], runHours[1]) == False:
+    if not isRun(runHours[0], runHours[1]):
         return [], [], journeyConfig['outOfHoursName']
-    departures, stationName = loadDeparturesForStationRTT(
-        journeyConfig, apiConfig["username"], apiConfig["password"])
+
+    departures, stationName = loadDeparturesForStationRTT(journeyConfig, apiConfig["username"], apiConfig["password"])
+
     if len(departures) == 0:
         return [], [], journeyConfig['outOfHoursName']
-    firstDepartureDestinations = loadDestinationsForDepartureRTT(
-        journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
 
-    # Remove the departure station from the calling points
-    departure_station = journeyConfig["departureStation"]
-    filtered_calling_points = [cp for cp in firstDepartureDestinations if cp.station != departure_station]
-    
-    # Debug: print the filtered calling points
-    print(f"Filtered calling points (excluding {departure_station}): {[cp.station for cp in filtered_calling_points]}")
+    firstDepartureDestinations = loadDestinationsForDepartureRTT(journeyConfig, apiConfig["username"], apiConfig["password"], departures[0].timetable_url)
 
-    return departures, filtered_calling_points, stationName
-
+    return departures, firstDepartureDestinations, stationName
 
 def drawBlankSignage(device, width: int, height: int, departureStation: str):
     global stationRenderCount, pauseCount
