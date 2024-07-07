@@ -5,6 +5,7 @@ import xmltodict
 from datetime import date
 from dataclasses import dataclass
 from typing import Any, List, Tuple
+import xml.etree.ElementTree as ET
 
 
 def removeBrackets(originalName):
@@ -238,8 +239,31 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
     return Departures, departureStationName
 
 def ProcessDepartures(journeyConfig, APIOut):
-    # Mock implementation: parse the XML response and extract necessary information
-    # Replace this with actual parsing logic
-    Departures = [{"calling_at_list": "Next Stations"}]
-    departureStationName = "Mock Station"
-    return Departures, departureStationName
+    root = ET.fromstring(APIOut)
+    ns = {
+        'x': 'http://schemas.xmlsoap.org/soap/envelope/',
+        'ldb': 'http://thalesgroup.com/RTTI/2017-10-01/ldb/'
+    }
+
+    stationName = root.find('.//ldb:locationName', ns).text
+    services = root.findall('.//ldb:service', ns)
+    departures = []
+
+    for service in services:
+        aimed_departure_time = service.find('ldb:std', ns).text
+        expected_departure_time = service.find('ldb:etd', ns).text
+        destination_name = service.find('.//ldb:destination/ldb:location/ldb:locationName', ns).text
+        platform = service.find('ldb:platform', ns).text if service.find('ldb:platform', ns) is not None else ''
+
+        calling_at_list = [loc.find('ldb:locationName', ns).text for loc in service.findall('.//ldb:subsequentCallingPoints/ldb:callingPointList/ldb:callingPoint/ldb:locationName', ns)]
+
+        departure = {
+            "aimed_departure_time": aimed_departure_time,
+            "expected_departure_time": expected_departure_time,
+            "destination_name": destination_name,
+            "platform": platform,
+            "calling_at_list": calling_at_list
+        }
+        departures.append(departure)
+
+    return departures, stationName
