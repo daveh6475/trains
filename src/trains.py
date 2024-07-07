@@ -174,9 +174,6 @@ def loadDeparturesForStationRTT(journeyConfig, username: str, password: str) -> 
     response = requests.get(f"https://api.rtt.io/api/v1/json/search/{departureStation}", auth=(username, password))
     data = response.json()
 
-    # Print the entire API response for inspection
-    print("Full API response from search:", json.dumps(data, indent=2))
-
     translated_departures = []
     td = date.today()
 
