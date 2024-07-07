@@ -242,36 +242,115 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
     return Departures, departureStationName
 
 def ProcessDepartures(journeyConfig, APIOut):
-    root = ET.fromstring(APIOut)
-    ns = {
-        'x': 'http://schemas.xmlsoap.org/soap/envelope/',
-        'ldb': 'http://thalesgroup.com/RTTI/2017-10-01/ldb/'
-    }
+    show_individual_departure_time = journeyConfig.get("individualStationDepartureTime", False)
+    APIElements = xmltodict.parse(APIOut)
 
-    locationNameElement = root.find('.//ldb:locationName', ns)
-    if locationNameElement is None:
+    Services = []
+
+    try:
+        # Namespaces
+        namespaces = {
+            'soap': "http://schemas.xmlsoap.org/soap/envelope/",
+            'ldb': "http://thalesgroup.com/RTTI/2017-10-01/ldb/",
+            'lt4': "http://thalesgroup.com/RTTI/2015-11-27/ldb/types",
+            'lt7': "http://thalesgroup.com/RTTI/2017-10-01/ldb/types",
+            'lt5': "http://thalesgroup.com/RTTI/2016-02-16/ldb/types"
+        }
+
+        departureStationName = APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']['lt4:locationName']
+
+    except KeyError:
         print("Error: locationName element not found in the XML response.")
         return None, None
-    stationName = locationNameElement.text
 
-    services = root.findall('.//ldb:service', ns)
-    departures = []
+    if 'lt7:trainServices' in APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']:
+        Services = APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']['lt7:trainServices']['lt7:service']
+        if isinstance(Services, dict):
+            Services = [Services]
 
-    for service in services:
-        aimed_departure_time = service.find('ldb:std', ns).text
-        expected_departure_time = service.find('ldb:etd', ns).text
-        destination_name = service.find('.//ldb:destination/ldb:location/ldb:locationName', ns).text
-        platform = service.find('ldb:platform', ns).text if service.find('ldb:platform', ns) is not None else ''
+        if 'lt7:busServices' in APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']:
+            BusServices = APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']['lt7:busServices']['lt7:service']
+            if isinstance(BusServices, dict):
+                BusServices = [BusServices]
+            Services = ArrivalOrder(Services + BusServices)
 
-        calling_at_list = [loc.find('ldb:locationName', ns).text for loc in service.findall('.//ldb:subsequentCallingPoints/ldb:callingPointList/ldb:callingPoint/ldb:locationName', ns)]
+    elif 'lt7:busServices' in APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']:
+        Services = APIElements['soap:Envelope']['soap:Body']['ldb:GetDepBoardWithDetailsResponse']['ldb:GetStationBoardResult']['lt7:busServices']['lt7:service']
+        if isinstance(Services, dict):
+            Services = [Services]
 
-        departure = {
-            "aimed_departure_time": aimed_departure_time,
-            "expected_departure_time": expected_departure_time,
-            "destination_name": destination_name,
-            "platform": platform,
-            "calling_at_list": calling_at_list
-        }
-        departures.append(departure)
+    else:
+        Services = None
+        return None, departureStationName
 
-    return departures, stationName
+    Departures = [{}] * len(Services)
+
+    for servicenum, eachService in enumerate(Services):
+        thisDeparture = {}
+
+        if 'lt4:platform' in eachService:
+            thisDeparture["platform"] = eachService['lt4:platform']
+
+        thisDeparture["aimed_departure_time"] = eachService["lt4:std"]
+        thisDeparture["expected_departure_time"] = eachService["lt4:etd"]
+
+        if 'lt4:length' in eachService:
+            thisDeparture["carriages"] = eachService["lt4:length"]
+        else:
+            thisDeparture["carriages"] = 0
+
+        if 'lt4:operator' in eachService:
+            thisDeparture["operator"] = eachService["lt4:operator"]
+
+        if not isinstance(eachService['lt5:destination']['lt4:location'], list):
+            thisDeparture["destination_name"] = removeBrackets(eachService['lt5:destination']['lt4:location']['lt4:locationName'])
+        else:
+            DestinationList = [i['lt4:locationName'] for i in eachService['lt5:destination']['lt4:location']]
+            thisDeparture["destination_name"] = " & ".join([removeBrackets(i) for i in DestinationList])
+
+        if 'lt7:subsequentCallingPoints' in eachService:
+            if not isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList'], dict):
+                CallingPointList = eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']
+                CallLists = []
+                CallListJoined = []
+                for sectionNum, eachSection in enumerate(CallingPointList):
+                    if isinstance(eachSection['lt7:callingPoint'], dict):
+                        CallLists.append([prepareLocationName(eachSection['lt7:callingPoint'], show_individual_departure_time)])
+                        CallListJoined.append(CallLists[sectionNum])
+                    else:
+                        CallLists.append([prepareLocationName(i, show_individual_departure_time) for i in eachSection['lt7:callingPoint']])
+                        CallListJoined.append(joinwithCommas(CallLists[sectionNum]))
+                thisDeparture["calling_at_list"] = joinWithSpaces(
+                    " with a portion going to ".join(CallListJoined),
+                    "  --  ",
+                    prepareServiceMessage(thisDeparture["operator"]),
+                    prepareCarriagesMessage(thisDeparture["carriages"])
+                )
+            else:
+                if isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'], dict):
+                    thisDeparture["calling_at_list"] = joinWithSpaces(
+                        prepareLocationName(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'], show_individual_departure_time),
+                        "only.",
+                        "  --  ",
+                        prepareServiceMessage(thisDeparture["operator"]),
+                        prepareCarriagesMessage(thisDeparture["carriages"])
+                    )
+                else:
+                    CallList = [prepareLocationName(i, show_individual_departure_time) for i in eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint']]
+                    thisDeparture["calling_at_list"] = joinWithSpaces(
+                        joinwithCommas(CallList) + ".",
+                        " --  ",
+                        prepareServiceMessage(thisDeparture["operator"]),
+                        prepareCarriagesMessage(thisDeparture["carriages"])
+                    )
+        else:
+            thisDeparture["calling_at_list"] = joinWithSpaces(
+                thisDeparture["destination_name"],
+                "only.",
+                prepareServiceMessage(thisDeparture["operator"]),
+                prepareCarriagesMessage(thisDeparture["carriages"])
+            )
+
+        Departures[servicenum] = thisDeparture
+
+    return Departures, departureStationName
