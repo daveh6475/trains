@@ -284,6 +284,9 @@ if __name__ == "__main__":
     apiConfig = config["api"]
     rows = 10
 
+    print(f"Journey Config: {journeyConfig}")  # Debugging statement
+    print(f"API Config: {apiConfig}")          # Debugging statement
+
     departures, stationName = loadDeparturesForStation(journeyConfig, apiConfig, rows)
     if departures is not None:
         print(f"Departures from {stationName}:")
