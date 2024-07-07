@@ -201,14 +201,13 @@ def ProcessDepartures(journeyConfig, APIOut):
 import requests
 from xml.etree import ElementTree as ET
 
-def loadDeparturesForStation(journeyConfig, apiKey, rows):
+def loadDeparturesForStation(journeyConfig, apiConfig, rows):
     try:
         stationCode = journeyConfig["departureStation"]
+        url = apiConfig["apiUrl"]
     except KeyError as e:
-        print(f"Key Error: {e} in journeyConfig: {journeyConfig}")
+        print(f"Key Error: {e} in journeyConfig: {journeyConfig} or apiConfig: {apiConfig}")
         return None, "Unknown Station"
-
-    url = journeyConfig["apiUrl"]  # Ensure this key exists in journeyConfig
 
     headers = {
         "Content-Type": "text/xml",
@@ -220,7 +219,7 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
                xmlns:typ="http://thalesgroup.com/RTTI/2010-11-01/ldb/types">
                  <soap:Header>
                    <typ:AccessToken>
-                     <typ:TokenValue>{apiKey}</typ:TokenValue>
+                     <typ:TokenValue>{apiConfig["apiKey"]}</typ:TokenValue>
                    </typ:AccessToken>
                  </soap:Header>
                  <soap:Body>
@@ -271,21 +270,21 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
         print(f"Request Error: {e}")
         return None, "Unknown Station"
 
-# Example usage
 if __name__ == "__main__":
-    apiKey = 'bda3de70-1f9e-4d80-a293-33c1900eb18d'
-    journeyConfig = {
-        "departureStation": "FRM",
-        "apiUrl": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx",
-        "destinationStation": None,
-        "stationAbbr": {"International": "Intl."},
-        "outOfHoursName": "",
-        "timeOffset": "0",
-        "screen1Platform": None
-    }
+    import json
+    import os
+
+    def loadConfig() -> dict:
+        with open('config.json', 'r') as jsonConfig:
+            return json.load(jsonConfig)
+
+    config = loadConfig()
+    apiKey = config["api"]["apiKey"]
+    journeyConfig = config["journey"]
+    apiConfig = config["api"]
     rows = 10
 
-    departures, stationName = loadDeparturesForStation(journeyConfig, apiKey, rows)
+    departures, stationName = loadDeparturesForStation(journeyConfig, apiConfig, rows)
     if departures is not None:
         print(f"Departures from {stationName}:")
         for departure in departures:
