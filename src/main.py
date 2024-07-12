@@ -324,15 +324,15 @@ def drawSignage(device, width, height, data):
     firstFont = font
     firstFont = fontBold
 
-    def renderDepartureDetails(departure, font, pos):
+    def renderDepartureDetails(departure, font):
         departureTime = departure["aimed_departure_time"]
         destinationName = departure["destination_name"]
-        
-        # Debug print statements
-        print(f"Rendering departure details for {departureTime} to {destinationName}")
+        platform = departure.get("platform", "")
+        if platform:
+            platform = f"Plat {platform}"
 
         def drawText(draw, *_):
-            train = f"{departureTime}  {destinationName}"
+            train = f"{departureTime}  {destinationName}  {platform}"
             _, _, bitmap = cachedBitmapText(train, font)
             draw.bitmap((0, 0), bitmap, fill="yellow")
 
@@ -391,7 +391,7 @@ def drawSignage(device, width, height, data):
         
         return drawText
     
-    rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
+    rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
@@ -426,6 +426,7 @@ def drawSignage(device, width, height, data):
         virtualViewport.add_hotspot(rowFourC, (width - w - pw, 36))
     virtualViewport.add_hotspot(rowTime, (0, 50))
     return virtualViewport
+
 
 
 try:
