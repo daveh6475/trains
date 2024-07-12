@@ -336,18 +336,38 @@ def drawSignage(device, width, height, data):
         print(f"Carriages message: {carriagesMessage}")
 
         def drawText(draw, *_):
-            train = f"{departureTime}  {destinationName}  {serviceMessage}  {carriagesMessage}"
+            train = f"{departureTime}  {destinationName}"
             _, _, bitmap = cachedBitmapText(train, font)
             draw.bitmap((0, 0), bitmap, fill="yellow")
 
         return drawText
-    
+
+    def renderServiceAndCarriages(departure, font):
+        serviceMessage = departure.get("service_message", "")
+        carriagesMessage = departure.get("carriages_message", "")
+        
+        def drawText(draw, *_):
+            y_offset = 0
+            if serviceMessage:
+                _, _, bitmap = cachedBitmapText(serviceMessage, font)
+                draw.bitmap((0, y_offset), bitmap, fill="yellow")
+                y_offset += 10
+            if carriagesMessage:
+                _, _, bitmap = cachedBitmapText(carriagesMessage, font)
+                draw.bitmap((0, y_offset), bitmap, fill="yellow")
+                y_offset += 10
+        
+        return drawText
+
     rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-    rowTwoB = snapshot(width - callingWidth, 10,
-                       renderStations(firstDepartureDestinations), interval=0.02)
+    rowTwoB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations), interval=0.02)
+    
+    # Add new snapshot for rendering service message and carriages message
+    rowTwoServiceAndCarriages = snapshot(width, 10, renderServiceAndCarriages(departures[0], font), interval=10)
+
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font, '2nd'), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
@@ -367,6 +387,7 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowOneC, (width - w - pw, 0))
     virtualViewport.add_hotspot(rowTwoA, (0, 12))
     virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
+    virtualViewport.add_hotspot(rowTwoServiceAndCarriages, (0, 22))  # Adjusted y-offset for proper placement
     if len(departures) > 1:
         virtualViewport.add_hotspot(rowThreeA, (0, 24))
         virtualViewport.add_hotspot(rowThreeB, (width - w, 24))
