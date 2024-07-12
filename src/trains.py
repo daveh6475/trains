@@ -50,6 +50,7 @@ def ArrivalOrder(ServicesIN):
     ServicesOUT = sorted(ServicesOUT, key=lambda k: k['sortOrder'])
     return ServicesOUT
 
+
 def ProcessDepartures(APIOut):
     APIElements = xmltodict.parse(APIOut)
     Services = []
@@ -109,6 +110,10 @@ def ProcessDepartures(APIOut):
         if 'lt4:operator' in eachService:
             thisDeparture["operator"] = eachService["lt4:operator"]
 
+        # Debug print statements
+        print(f"Operator: {thisDeparture.get('operator', 'No operator')}")
+        print(f"Carriages: {thisDeparture.get('carriages', 'No carriages')}")
+
         # get name of destination
         if not isinstance(eachService['lt5:destination']['lt4:location'], list):    # the service only has one destination
             thisDeparture["destination_name"] = removeBrackets(eachService['lt5:destination']['lt4:location']['lt4:locationName'])
@@ -165,6 +170,7 @@ def ProcessDepartures(APIOut):
         Departures[servicenum] = thisDeparture
 
     return Departures, departureStationName
+
 
 def loadDeparturesForStation(journeyConfig, apiKey):
     if journeyConfig["departureStation"] == "":
