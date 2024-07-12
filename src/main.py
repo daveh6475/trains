@@ -324,6 +324,24 @@ def drawSignage(device, width, height, data):
         return noTrains
     firstFont = font
     firstFont = fontBold
+
+    def renderDepartureDetails(departure, font, pos):
+        departureTime = departure["aimed_departure_time"]
+        destinationName = departure["destination_name"]
+        serviceMessage = departure.get("service_message", "")
+        carriagesMessage = departure.get("carriages_message", "")
+        
+        # Debug print statements
+        print(f"Rendering departure details for {departureTime} to {destinationName}")
+        print(f"Service message: {serviceMessage}")
+        print(f"Carriages message: {carriagesMessage}")
+
+        def drawText(draw, *_):
+            train = f"{departureTime}  {destinationName}  {serviceMessage}  {carriagesMessage}"
+            _, _, bitmap = cachedBitmapText(train, font)
+            draw.bitmap((0, 0), bitmap, fill="yellow")
+
+        return drawText
     
     rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
