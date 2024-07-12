@@ -371,31 +371,28 @@ try:
         virtual = drawSignage(device, width=widgetWidth,
                               height=widgetHeight, data=data)
 
-
     timeAtStart = time.time()
     timeNow = time.time()
 
     while True:
-        with regulator:
-            
-            if(timeNow - timeAtStart >= config["refreshTime"]):
-                
-                # display NRE attribution while data loads
-                virtual = drawNRE(device, width=widgetWidth, height=widgetHeight)
-                virtual.refresh()
-
-                data = loadData(config["transportApi"], config["journey"])
-                if data[0] == False:
-                    virtual = drawBlankSignage(
-                        device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
-                else:
-                    virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
-
-                timeAtStart = time.time()
-
-            timeNow = time.time()
+        # Removed 'with regulator:'
+        
+        if(timeNow - timeAtStart >= config["refreshTime"]):
+            # display NRE attribution while data loads
+            virtual = drawNRE(device, width=widgetWidth, height=widgetHeight)
             virtual.refresh()
 
+            data = loadData(config["transportApi"], config["journey"])
+            if data[0] == False:
+                virtual = drawBlankSignage(
+                    device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+            else:
+                virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
+
+            timeAtStart = time.time()
+
+        timeNow = time.time()
+        virtual.refresh()
 
 except KeyboardInterrupt:
     pass
