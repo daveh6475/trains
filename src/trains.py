@@ -63,7 +63,7 @@ def ProcessDepartures(APIOut):
         Services = APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']['lt7:trainServices']['lt7:service']
         if isinstance(Services, dict):  # if there's only one service, it comes out as a dict 
             Services = [Services]       # but it needs to be a list with a single element
- 
+
         # if there are train and bus services from this station 
         if 'lt7:busServices' in APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']:
             BusServices = APIElements['soap:Envelope']['soap:Body']['GetDepBoardWithDetailsResponse']['GetStationBoardResult']['lt7:busServices']['lt7:service']
@@ -170,6 +170,7 @@ def ProcessDepartures(APIOut):
         Departures[servicenum] = thisDeparture
 
     return Departures, departureStationName
+
 
 
 def loadDeparturesForStation(journeyConfig, apiKey):
