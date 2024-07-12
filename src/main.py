@@ -209,37 +209,18 @@ def renderDots(draw, *_):
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
 def loadData(apiConfig, journeyConfig):
-    runHours = []
-
-    if len(runHours) == 2 and isRun(runHours[0], runHours[1]) is False:
+    runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
+    if isRun(runHours[0], runHours[1]) == False:
         return False, False, journeyConfig['outOfHoursName']
 
-    rows = "10"
+    departures, stationName = loadDeparturesForStation(
+        journeyConfig, apiConfig["apiKey"])
 
-    try:
-        print(f"API Config: {apiConfig}")  # Debug statement
-        print(f"API Key: {apiConfig['apiKey']}")  # Debug statement
-        print(f"API URL: {apiConfig.get('apiUrl')}")  # Debug statement
-        
-        departures, stationName = loadDeparturesForStation(
-            journeyConfig, apiConfig["apiKey"], rows)
+    if (departures == None):
+        return False, False, stationName
 
-        if departures is None:
-            return False, False, stationName
-
-        firstDepartureDestinations = departures[0]["calling_at_list"]
-        return departures, firstDepartureDestinations, stationName
-    except requests.RequestException as err:
-        print("Error: Failed to fetch data from OpenLDBWS")
-        print(err.__context__)
-        return False, False, journeyConfig['outOfHoursName']
-    except KeyError as err:
-        print(f"Key Error: {err}")
-        print("An error occurred while trying to access a key in the data.")
-        return False, False, journeyConfig['outOfHoursName']
-    except Exception as err:
-        print(f"Unexpected Error: {err}")
-        return False, False, journeyConfig['outOfHoursName']
+    firstDepartureDestinations = departures[0]["calling_at_list"]
+    return departures, firstDepartureDestinations, stationName
 
 
 def drawStartup(device, width, height):
@@ -381,53 +362,42 @@ try:
     pauseCount = 0
     loop_count = 0
 
-    apiConfig = config["api"]
-    journeyConfig = config["journey"]
+    data = loadData(config["transportApi"], config["journey"])
 
-    data = loadDeparturesForStation(journeyConfig, apiConfig, rows=10)
-
-    if data[0] is False:
+    if data[0] == False:
         virtual = drawBlankSignage(
-            device, width=widgetWidth, height=widgetHeight, departureStation=data[1])
-        
-        if config.get('dualScreen'):
-            virtual1 = drawBlankSignage(
-                device1, width=widgetWidth, height=widgetHeight, departureStation=data[1])
+            device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
     else:
-        departureData = data[0]
-        nextStations = data[1]
-        station = data[1]
-        
-        screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
-        virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
+        virtual = drawSignage(device, width=widgetWidth,
+                              height=widgetHeight, data=data)
+
 
     timeAtStart = time.time()
+    timeNow = time.time()
 
     while True:
-        timeNow = time.time()
-        if (timeNow - timeAtStart >= config["refreshTime"]):
-            data = loadDeparturesForStation(journeyConfig, apiConfig, rows=10)
+        with regulator:
             
-            if len(data[0]) == 0:
-                virtual = drawBlankSignage(
-                    device, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, departureStation=data[1])
-            else:
-                departureData = data[0]
-                nextStations = data[1]
-                station = data[1]
-                screenData = platform_filter(departureData, config["journey"]["screen1Platform"], station)
-                virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=screenData)
-            
-            timeAtStart = time.time()
-        virtual.refresh()
+            if(timeNow - timeAtStart >= config["refreshTime"]):
+                
+                # display NRE attribution while data loads
+                virtual = drawNRE(device, width=widgetWidth, height=widgetHeight)
+                virtual.refresh()
+
+                data = loadData(config["transportApi"], config["journey"])
+                if data[0] == False:
+                    virtual = drawBlankSignage(
+                        device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
+                else:
+                    virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
+
+                timeAtStart = time.time()
+
+            timeNow = time.time()
+            virtual.refresh()
+
 
 except KeyboardInterrupt:
     pass
 except ValueError as err:
     print(f"Error: {err}")
-except requests.RequestException as err:
-    print(f"Request Error: {err}")
-except KeyError as err:
-    print(f"Key Error: {err}")
-except Exception as err:
-    print(f"Unexpected Error: {err}")
