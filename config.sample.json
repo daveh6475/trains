@@ -2,16 +2,15 @@
   "journey": {
     "departureStation": "",
     "destinationStation": null,
+    "timeOffset": "",
     "stationAbbr": {
       "International": "Intl."
-    },
-    "outOfHoursName": ""
+    }
   },
   "refreshTime": 180,
-  "rttApi": {
-      "username": "",
-      "password": "",
-      "operatingHours": "6-23"
-    },
-    "apiMethod": "rtt"    
+  "transportApi": {
+    "appId": "",
+    "apiKey": "",
+    "operatingHours": "0-23"
+  }
 }
