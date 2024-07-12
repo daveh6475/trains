@@ -307,7 +307,6 @@ def platform_filter(departureData, platformNumber, station):
 
     return platformData
 
-
 def drawSignage(device, width, height, data):
     global stationRenderCount, pauseCount
     virtualViewport = viewport(device, width=width, height=height)
@@ -325,24 +324,27 @@ def drawSignage(device, width, height, data):
     firstFont = font
     firstFont = fontBold
 
-    def renderDepartureDetails(departure, font, pos):
+    def renderDepartureDetails(departure, font):
         departureTime = departure["aimed_departure_time"]
         destinationName = departure["destination_name"]
-        
-        # Debug print statements
-        print(f"Rendering departure details for {departureTime} to {destinationName}")
-
         def drawText(draw, *_):
             train = f"{departureTime}  {destinationName}"
             _, _, bitmap = cachedBitmapText(train, font)
             draw.bitmap((0, 0), bitmap, fill="yellow")
+        return drawText
 
+    def renderPlatform(departure, font):
+        platform = departure.get("platform", "")
+        if platform:
+            platform = f"Plat {platform}"
+        def drawText(draw, *_):
+            _, _, bitmap = cachedBitmapText(platform, font)
+            draw.bitmap((0, 0), bitmap, fill="yellow")
         return drawText
 
     def renderServiceAndCarriages(departure, font):
         serviceMessage = departure.get("service_message", "")
         carriagesMessage = departure.get("carriages_message", "")
-        
         def drawText(draw, *_):
             y_offset = 0
             if serviceMessage:
@@ -353,24 +355,18 @@ def drawSignage(device, width, height, data):
                 _, _, bitmap = cachedBitmapText(carriagesMessage, font)
                 draw.bitmap((0, y_offset), bitmap, fill="yellow")
                 y_offset += 10
-        
         return drawText
 
     def renderStationsWithServiceAndCarriages(stations, departure):
         serviceMessage = departure.get("service_message", "")
         carriagesMessage = departure.get("carriages_message", "")
-        
         def drawText(draw, *_):
             global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
-
             if len(stations) == stationRenderCount - 5:
                 stationRenderCount = 0
-
             stationsText = stations + " " + serviceMessage + " " + carriagesMessage
             txt_width, txt_height, bitmap = cachedBitmapText(stationsText, font)
-
             if hasElevated:
-                # slide the bitmap left until it's fully out of view
                 draw.bitmap((pixelsLeft - 1, 0), bitmap, fill="yellow")
                 if -pixelsLeft > txt_width and pauseCount < 8:
                     pauseCount += 1
@@ -380,7 +376,6 @@ def drawSignage(device, width, height, data):
                     pauseCount = 0
                     pixelsLeft = pixelsLeft - 1
             else:
-                # slide the bitmap up from the bottom of its viewport until it's fully in view
                 draw.bitmap((0, txt_height - pixelsUp), bitmap, fill="yellow")
                 if pixelsUp == txt_height:
                     pauseCount += 1
@@ -389,23 +384,22 @@ def drawSignage(device, width, height, data):
                         pixelsUp = 0
                 else:
                     pixelsUp = pixelsUp + 1
-        
         return drawText
     
-    rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
+    rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
-    rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
+    rowOneC = snapshot(pw, 10, renderPlatform(departures[0], firstFont), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10, renderStationsWithServiceAndCarriages(firstDepartureDestinations, departures[0]), interval=0.02)
     
     if len(departures) > 1:
-        rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font, '2nd'), interval=10)
+        rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
-        rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
+        rowThreeC = snapshot(pw, 10, renderPlatform(departures[1], font), interval=10)
     if len(departures) > 2:
-        rowFourA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[2], font, '3rd'), interval=10)
+        rowFourA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[2], font), interval=10)
         rowFourB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=10)
-        rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
+        rowFourC = snapshot(pw, 10, renderPlatform(departures[2], font), interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=0.1)
     if len(virtualViewport._hotspots) > 0:
         for vhotspot, xy in virtualViewport._hotspots:
