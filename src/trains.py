@@ -161,11 +161,14 @@ def loadDeparturesForStation(journeyConfig, apiKey):
         raise ValueError(
             "Please complete the API section of your config.json file")
 
-    
     if (journeyConfig["timeOffset"] == ""):
         journeyConfig["timeOffset"] = "0"
 
-
+    # Debug print statements
+    print(f"apiKey: {apiKey}")
+    print(f"departureStation: {journeyConfig['departureStation']}")
+    print(f"destinationStation: {journeyConfig['destinationStation']}")
+    print(f"timeOffset: {journeyConfig['timeOffset']}")
 
     APIRequest = """
         <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
@@ -183,7 +186,6 @@ def loadDeparturesForStation(journeyConfig, apiKey):
             </ldb:GetDepBoardWithDetailsRequest>
         </x:Body>
     </x:Envelope>"""
-
 
     headers = {'Content-Type': 'text/xml'}
     apiURL = "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb11.asmx"
