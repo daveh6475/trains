@@ -327,13 +327,9 @@ def drawSignage(device, width, height, data):
     def renderDepartureDetails(departure, font, pos):
         departureTime = departure["aimed_departure_time"]
         destinationName = departure["destination_name"]
-        serviceMessage = departure.get("service_message", "")
-        carriagesMessage = departure.get("carriages_message", "")
         
         # Debug print statements
         print(f"Rendering departure details for {departureTime} to {destinationName}")
-        print(f"Service message: {serviceMessage}")
-        print(f"Carriages message: {carriagesMessage}")
 
         def drawText(draw, *_):
             train = f"{departureTime}  {destinationName}"
@@ -359,15 +355,48 @@ def drawSignage(device, width, height, data):
         
         return drawText
 
+    def renderStationsWithServiceAndCarriages(stations, departure):
+        serviceMessage = departure.get("service_message", "")
+        carriagesMessage = departure.get("carriages_message", "")
+        
+        def drawText(draw, *_):
+            global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
+
+            if len(stations) == stationRenderCount - 5:
+                stationRenderCount = 0
+
+            stationsText = stations + " " + serviceMessage + " " + carriagesMessage
+            txt_width, txt_height, bitmap = cachedBitmapText(stationsText, font)
+
+            if hasElevated:
+                # slide the bitmap left until it's fully out of view
+                draw.bitmap((pixelsLeft - 1, 0), bitmap, fill="yellow")
+                if -pixelsLeft > txt_width and pauseCount < 8:
+                    pauseCount += 1
+                    pixelsLeft = 0
+                    hasElevated = 0
+                else:
+                    pauseCount = 0
+                    pixelsLeft = pixelsLeft - 1
+            else:
+                # slide the bitmap up from the bottom of its viewport until it's fully in view
+                draw.bitmap((0, txt_height - pixelsUp), bitmap, fill="yellow")
+                if pixelsUp == txt_height:
+                    pauseCount += 1
+                    if pauseCount > 20:
+                        hasElevated = 1
+                        pixelsUp = 0
+                else:
+                    pixelsUp = pixelsUp + 1
+        
+        return drawText
+    
     rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-    rowTwoB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations), interval=0.02)
+    rowTwoB = snapshot(width - callingWidth, 10, renderStationsWithServiceAndCarriages(firstDepartureDestinations, departures[0]), interval=0.02)
     
-    # Add new snapshot for rendering service message and carriages message
-    rowTwoServiceAndCarriages = snapshot(width, 10, renderServiceAndCarriages(departures[0], font), interval=10)
-
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font, '2nd'), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
@@ -387,7 +416,6 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowOneC, (width - w - pw, 0))
     virtualViewport.add_hotspot(rowTwoA, (0, 12))
     virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
-    virtualViewport.add_hotspot(rowTwoServiceAndCarriages, (0, 22))  # Adjusted y-offset for proper placement
     if len(departures) > 1:
         virtualViewport.add_hotspot(rowThreeA, (0, 24))
         virtualViewport.add_hotspot(rowThreeB, (width - w, 24))
@@ -398,6 +426,7 @@ def drawSignage(device, width, height, data):
         virtualViewport.add_hotspot(rowFourC, (width - w - pw, 36))
     virtualViewport.add_hotspot(rowTime, (0, 50))
     return virtualViewport
+
 
 try:
     serial = spi(port=0)
