@@ -33,14 +33,28 @@ def makeFont(name, size):
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
-def renderDestination(departure, font, pos):
+def renderDepartureDetails(departure, font, pos):
     departureTime = departure["aimed_departure_time"]
     destinationName = departure["destination_name"]
+    serviceMessage = departure.get("service_message", "")
+    carriagesMessage = departure.get("carriages_message", "")
 
     def drawText(draw, *_):
+        y_offset = 0
         train = f"{departureTime}  {destinationName}"
         _, _, bitmap = cachedBitmapText(train, font)
-        draw.bitmap((0, 0), bitmap, fill="yellow")
+        draw.bitmap((0, y_offset), bitmap, fill="yellow")
+        y_offset += 10
+        
+        if serviceMessage:
+            _, _, bitmap = cachedBitmapText(serviceMessage, font)
+            draw.bitmap((0, y_offset), bitmap, fill="yellow")
+            y_offset += 10
+        
+        if carriagesMessage:
+            _, _, bitmap = cachedBitmapText(carriagesMessage, font)
+            draw.bitmap((0, y_offset), bitmap, fill="yellow")
+            y_offset += 10
 
     return drawText
 
@@ -311,18 +325,18 @@ def drawSignage(device, width, height, data):
     firstFont = font
     firstFont = fontBold
     
-    rowOneA = snapshot(width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=10)
+    rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
     rowTwoB = snapshot(width - callingWidth, 10,
                        renderStations(firstDepartureDestinations), interval=0.02)
     if len(departures) > 1:
-        rowThreeA = snapshot(width - w - pw, 10, renderDestination(departures[1], font, '2nd'), interval=10)
+        rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font, '2nd'), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
     if len(departures) > 2:
-        rowFourA = snapshot(width - w - pw, 10, renderDestination(departures[2], font, '3rd'), interval=10)
+        rowFourA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[2], font, '3rd'), interval=10)
         rowFourB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=10)
         rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=0.1)
@@ -375,11 +389,9 @@ try:
     timeNow = time.time()
 
     while True:
-        # Removed 'with regulator:'
-        
         if(timeNow - timeAtStart >= config["refreshTime"]):
             # display NRE attribution while data loads
-            virtual = drawNRE(device, width=widgetWidth, height=widgetHeight)
+            virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
             virtual.refresh()
 
             data = loadData(config["transportApi"], config["journey"])
