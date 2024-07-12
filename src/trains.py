@@ -138,11 +138,18 @@ def ProcessDepartures(APIOut):
                     else: # there are several calling points in this list
                         CallLists.append([removeBrackets(i['lt7:locationName']) for i in eachSection['lt7:callingPoint']])
                         CallListJoined.append(joinwithCommas(CallLists[sectionNum]))
+
+                    prepareServiceMessage(thisDeparture["operator"]),
+                    prepareCarriagesMessage(thisDeparture["carriages"])
                 thisDeparture["calling_at_list"] = " with a portion going to ".join(CallListJoined) + "."
             else: # there is one list of calling points
                 if isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'], dict):
                     # there is only one calling point in the list
                     thisDeparture["calling_at_list"] = eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint']['lt7:locationName'] + " only."
+                # Add the following lines here
+                thisDeparture["service_message"] = prepareServiceMessage(thisDeparture["operator"])
+                thisDeparture["carriages_message"] = prepareCarriagesMessage(thisDeparture["carriages"])
+                
                 else: # there are several calling points in the list
                     CallList = [removeBrackets(i['lt7:locationName']) for i in eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint']]
                     thisDeparture["calling_at_list"] = joinwithCommas(CallList) + "."
@@ -152,7 +159,9 @@ def ProcessDepartures(APIOut):
                 thisDeparture["carriages_message"] = prepareCarriagesMessage(thisDeparture["carriages"])
 
         else: # there are no calling points, so just display the destination
-            thisDeparture["calling_at_list"] = thisDeparture["destination_name"] + " only."
+                thisDeparture["calling_at_list"] = thisDeparture["destination_name"] + " only."
+                thisDeparture["service_message"] = prepareServiceMessage(thisDeparture["operator"])
+                thisDeparture["carriages_message"] = prepareCarriagesMessage(thisDeparture["carriages"])
 
         print("the " + thisDeparture["aimed_departure_time"] + " calls at " + thisDeparture["calling_at_list"])
 
