@@ -140,12 +140,17 @@ def ProcessDepartures(APIOut):
                         CallListJoined.append(joinwithCommas(CallLists[sectionNum]))
                 thisDeparture["calling_at_list"] = " with a portion going to ".join(CallListJoined) + "."
             else: # there is one list of calling points
-                if isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'],dict):
+                if isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'], dict):
                     # there is only one calling point in the list
                     thisDeparture["calling_at_list"] = eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint']['lt7:locationName'] + " only."
                 else: # there are several calling points in the list
                     CallList = [removeBrackets(i['lt7:locationName']) for i in eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint']]
                     thisDeparture["calling_at_list"] = joinwithCommas(CallList) + "."
+
+                # Add the following lines here
+                thisDeparture["service_message"] = prepareServiceMessage(thisDeparture["operator"])
+                thisDeparture["carriages_message"] = prepareCarriagesMessage(thisDeparture["carriages"])
+
         else: # there are no calling points, so just display the destination
             thisDeparture["calling_at_list"] = thisDeparture["destination_name"] + " only."
 
@@ -154,6 +159,8 @@ def ProcessDepartures(APIOut):
         Departures[servicenum] = thisDeparture
 
     return Departures, departureStationName
+
+
 
 def loadDeparturesForStation(journeyConfig, apiKey):
     if journeyConfig["departureStation"] == "":
