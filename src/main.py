@@ -331,8 +331,6 @@ def drawSignage(device, width, height, data):
         return noTrains
 
     firstFont = font
-    if config['firstDepartureBold']:
-        firstFont = fontBold
 
     def renderDestination(departure, font, pos):
         departureTime = departure["aimed_departure_time"]
@@ -452,7 +450,6 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowTime, (0, 50))
 
     return virtualViewport
-
 
 try:
     serial = spi(port=0)
