@@ -101,6 +101,16 @@ def ProcessDepartures(APIOut):
         # get estimated departure time
         thisDeparture["expected_departure_time"] = eachService["lt4:etd"]
 
+        # get carriages, if available
+        if 'lt4:length' in eachService:
+            thisDeparture["carriages"] = eachService["lt4:length"]
+        else:
+            thisDeparture["carriages"] = 0
+
+        # get operator, if available
+        if 'lt4:operator' in eachService:
+            thisDeparture["operator"] = eachService["lt4:operator"]
+
         # get name of destination
         if not isinstance(eachService['lt5:destination']['lt4:location'],list):    # the service only has one destination
             thisDeparture["destination_name"] = removeBrackets(eachService['lt5:destination']['lt4:location']['lt4:locationName'])
