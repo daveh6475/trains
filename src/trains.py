@@ -170,18 +170,20 @@ def loadDeparturesForStation(journeyConfig, apiKey):
     print(f"destinationStation: {journeyConfig['destinationStation']}")
     print(f"timeOffset: {journeyConfig['timeOffset']}")
 
-    APIRequest = """
+    destinationStationFilter = f"<ldb:filterCrs>{journeyConfig['destinationStation']}</ldb:filterCrs>" if journeyConfig["destinationStation"] else ""
+
+    APIRequest = f"""
         <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
         <x:Header>
-            <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
+            <typ4:AccessToken><typ4:TokenValue>{apiKey}</typ4:TokenValue></typ4:AccessToken>
         </x:Header>
         <x:Body>
             <ldb:GetDepBoardWithDetailsRequest>
                 <ldb:numRows>3</ldb:numRows>
-                <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
-                <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
+                <ldb:crs>{journeyConfig["departureStation"]}</ldb:crs>
+                {destinationStationFilter}
                 <ldb:filterType>to</ldb:filterType>
-                <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
+                <ldb:timeOffset>{journeyConfig["timeOffset"]}</ldb:timeOffset>
                 <ldb:timeWindow>120</ldb:timeWindow>
             </ldb:GetDepBoardWithDetailsRequest>
         </x:Body>
