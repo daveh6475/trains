@@ -350,7 +350,7 @@ def drawSignage(device, width, height, data):
             draw.bitmap((0, 0), bitmap, fill="yellow")
 
         return drawText
-    
+
     rowOneA = snapshot(width - w - pw - 5, 10, renderDepartureDetails(departures[0], firstFont, '1st'), interval=10)
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=10)
@@ -362,18 +362,10 @@ def drawSignage(device, width, height, data):
         rowThreeA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[1], font, '2nd'), interval=10)
         rowThreeB = snapshot(w, 10, renderServiceStatus(departures[1]), interval=10)
         rowThreeC = snapshot(pw, 10, renderPlatform(departures[1]), interval=10)
-        rowFourA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-        rowFourB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations), interval=0.02)
-        rowFourC = snapshot(width, 10, renderOperatorAndCarriages(departures[1], font), interval=10)
-
     if len(departures) > 2:
-        rowFiveA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[2], font, '3rd'), interval=10)
-        rowFiveB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=10)
-        rowFiveC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
-        rowSixA = snapshot(callingWidth, 10, renderCallingAt, interval=100)
-        rowSixB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations), interval=0.02)
-        rowSixC = snapshot(width, 10, renderOperatorAndCarriages(departures[2], font), interval=10)
-
+        rowFourA = snapshot(width - w - pw, 10, renderDepartureDetails(departures[2], font, '3rd'), interval=10)
+        rowFourB = snapshot(w, 10, renderServiceStatus(departures[2]), interval=10)
+        rowFourC = snapshot(pw, 10, renderPlatform(departures[2]), interval=10)
     rowTime = snapshot(width, 14, renderTime, interval=0.1)
     if len(virtualViewport._hotspots) > 0:
         for vhotspot, xy in virtualViewport._hotspots:
@@ -385,26 +377,18 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowOneC, (width - w - pw, 0))
     virtualViewport.add_hotspot(rowTwoA, (0, 12))
     virtualViewport.add_hotspot(rowTwoB, (callingWidth, 12))
-    virtualViewport.add_hotspot(rowTwoC, (0, 24))
-
+    virtualViewport.add_hotspot(rowTwoC, (0, 24))  # Added to show operator and carriages
     if len(departures) > 1:
         virtualViewport.add_hotspot(rowThreeA, (0, 36))
         virtualViewport.add_hotspot(rowThreeB, (width - w, 36))
         virtualViewport.add_hotspot(rowThreeC, (width - w - pw, 36))
-        virtualViewport.add_hotspot(rowFourA, (0, 48))
-        virtualViewport.add_hotspot(rowFourB, (callingWidth, 48))
-        virtualViewport.add_hotspot(rowFourC, (0, 60))
-
     if len(departures) > 2:
-        virtualViewport.add_hotspot(rowFiveA, (0, 72))
-        virtualViewport.add_hotspot(rowFiveB, (width - w, 72))
-        virtualViewport.add_hotspot(rowFiveC, (width - w - pw, 72))
-        virtualViewport.add_hotspot(rowSixA, (0, 84))
-        virtualViewport.add_hotspot(rowSixB, (callingWidth, 84))
-        virtualViewport.add_hotspot(rowSixC, (0, 96))
-
-    virtualViewport.add_hotspot(rowTime, (0, 108))
+        virtualViewport.add_hotspot(rowFourA, (0, 48))
+        virtualViewport.add_hotspot(rowFourB, (width - w, 48))
+        virtualViewport.add_hotspot(rowFourC, (width - w - pw, 48))
+    virtualViewport.add_hotspot(rowTime, (0, 60))
     return virtualViewport
+
 
 try:
     serial = spi(port=0)
