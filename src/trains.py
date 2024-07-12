@@ -142,6 +142,9 @@ def ProcessDepartures(APIOut):
                         CallListJoined.append(joinwithCommas(CallLists[sectionNum]))
                         # CallListJoined.append(", ".join(CallLists[sectionNum]))
                 thisDeparture["calling_at_list"] = " with a portion going to ".join(CallListJoined) + "."
+                    prepareServiceMessage(thisDeparture["operator"]),
+                    prepareCarriagesMessage(thisDeparture["carriages"])
+            
 
             else: # there is one list of calling points
                 if isinstance(eachService['lt7:subsequentCallingPoints']['lt7:callingPointList']['lt7:callingPoint'],dict):
