@@ -378,12 +378,6 @@ def drawSignage(device, width, height, data):
     virtualViewport.add_hotspot(rowTime, (0, 50))
     return virtualViewport
 
-except KeyboardInterrupt:
-    pass
-except ValueError as err:
-    print(f"Error: {err}") 
-
-
 try:
     serial = spi(port=0)
     device = ssd1322(serial, mode="1", rotate=2)
