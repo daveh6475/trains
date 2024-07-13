@@ -209,7 +209,7 @@ def renderDepartureStation(departureStation, xOffset):
     return draw
 
 def renderDots(draw, *_):
-    text = ".  .  ."
+    text = ""
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
 def loadData(apiConfig, journeyConfig, rows):
