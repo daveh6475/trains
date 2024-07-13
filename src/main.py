@@ -22,6 +22,9 @@ global toc
 DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
 
+# Constants
+HOURS_PATTERN = re.compile(r'\d{1,2}-\d{1,2}')
+
 def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
         data = json.load(jsonConfig)
@@ -389,6 +392,11 @@ try:
 
     rows = "10"  # Define the number of rows of departure data you want to fetch
 
+    # Validate and parse screenBlankHours
+    blankHours = []
+    if HOURS_PATTERN.match(config['screenBlankHours']):
+        blankHours = [int(x) for x in config['screenBlankHours'].split('-')]
+
     data = loadData(config["transportApi"], config["journey"], rows)
 
     if data[0] == False:
@@ -402,6 +410,14 @@ try:
     timeNow = time.time()
 
     while True:
+        timeNow = time.time()
+
+        # Check if within blank hours and clear the screen if necessary
+        if len(blankHours) == 2 and isRun(blankHours[0], blankHours[1]):
+            device.clear()  # This line clears the screen
+            time.sleep(10)  # Sleep for 10 seconds before checking again
+            continue
+
         if(timeNow - timeAtStart >= config["refreshTime"]):
             # display NRE attribution while data loads
             virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
@@ -416,9 +432,12 @@ try:
 
             timeAtStart = time.time()
 
-        timeNow = time.time()
         virtual.refresh()
 
+except KeyboardInterrupt:
+    pass
+except ValueError as err:
+    print(f"Error: {err}")
 except KeyboardInterrupt:
     pass
 except ValueError as err:
