@@ -212,14 +212,10 @@ def renderDots(draw, *_):
     text = ".  .  ."
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
-def loadData(apiConfig, journeyConfig):
+def loadData(apiConfig, journeyConfig, rows):
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
     if isRun(runHours[0], runHours[1]) == False:
         return False, False, journeyConfig['outOfHoursName']
-
-    # set rows to 10 (max allowed) to get as many departure as poss
-    # leaving as a variable so this can be updated if the API does
-    rows = "10"
 
     try:
         departures, stationName = loadDeparturesForStation(
@@ -391,6 +387,8 @@ try:
     pauseCount = 0
     loop_count = 0
 
+    rows = "10"  # Define the number of rows of departure data you want to fetch
+
     data = loadData(config["transportApi"], config["journey"], rows)
 
     if data[0] == False:
@@ -409,7 +407,7 @@ try:
             virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
             virtual.refresh()
 
-            data = loadData(config["transportApi"], config["journey"])
+            data = loadData(config["transportApi"], config["journey"], rows)
             if data[0] == False:
                 virtual = drawBlankSignage(
                     device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
