@@ -220,6 +220,9 @@ def loadData(apiConfig, journeyConfig, rows):
     try:
         departures, stationName = loadDeparturesForStation(
             journeyConfig, apiConfig["apiKey"], rows)
+        
+        # Debugging: Print the retrieved departures
+        print(f"Departures: {departures}")
 
         if departures is None:
             return False, False, stationName
