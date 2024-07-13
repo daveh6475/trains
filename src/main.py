@@ -438,7 +438,3 @@ except KeyboardInterrupt:
     pass
 except ValueError as err:
     print(f"Error: {err}")
-except KeyboardInterrupt:
-    pass
-except ValueError as err:
-    print(f"Error: {err}")
