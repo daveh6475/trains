@@ -394,10 +394,10 @@ try:
 
     # Validate and parse screenBlankHours
     blankHours = []
-    if HOURS_PATTERN.match(config['screenBlankHours']):
-        blankHours = [int(x) for x in config['screenBlankHours'].split('-')]
+    if HOURS_PATTERN.match(config['transportApi']['screenBlankHours']):
+        blankHours = [int(x) for x in config['transportApi']['screenBlankHours'].split('-')]
 
-    data = loadData(config["transportApi"], config["journey"], rows)
+    data = loadData(config["transportApi"], config["journey"], rows, config["transportApi"]["operatingHours"])
 
     if data[0] == False:
         virtual = drawBlankSignage(
@@ -423,7 +423,7 @@ try:
             virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
             virtual.refresh()
 
-            data = loadData(config["transportApi"], config["journey"], rows)
+            data = loadData(config["transportApi"], config["journey"], rows, config["transportApi"]["operatingHours"])
             if data[0] == False:
                 virtual = drawBlankSignage(
                     device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
@@ -433,6 +433,11 @@ try:
             timeAtStart = time.time()
 
         virtual.refresh()
+
+except KeyboardInterrupt:
+    pass
+except ValueError as err:
+    print(f"Error: {err}")
 
 except KeyboardInterrupt:
     pass
