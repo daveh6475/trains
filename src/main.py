@@ -3,7 +3,8 @@ import sys
 import time
 import json
 import requests
-
+import re
+import threading
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
@@ -14,13 +15,15 @@ from open import isRun
 from typing import Any, List, Tuple
 from luma.core.interface.serial import spi, noop
 from luma.oled.device import ssd1322
-from luma.core.virtual import viewport, snapshot
 from luma.core.sprite_system import framerate_regulator
-import socket, re, uuid
+import socket, uuid
 
 global toc
 DISPLAY_WIDTH = 256
 DISPLAY_HEIGHT = 64
+
+# Constants
+HOURS_PATTERN = re.compile(r'\d{1,2}-\d{1,2}')
 
 def loadConfig() -> dict[str, Any]:
     with open('config.json', 'r') as jsonConfig:
@@ -84,7 +87,6 @@ def renderCallingAt(draw, *_):
     _, _, bitmap = cachedBitmapText(stations, font)
     draw.bitmap((0, 0), bitmap, fill="yellow")
 
-
 bitmapRenderCache = {}
 
 def cachedBitmapText(text, font):
@@ -144,7 +146,6 @@ def renderStations(stations):
 
     return drawText
 
-
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
@@ -185,7 +186,6 @@ def renderPoweredBy(xOffset):
 
     return drawText
 
-
 def renderNRE(xOffset):
     def drawText(draw, *_):
         text = "National Rail Enquiries"
@@ -193,14 +193,13 @@ def renderNRE(xOffset):
 
     return drawText
 
-
 def renderName(xOffset):
     def drawText(draw, *_):
         text = "UK Train Departure Display"
         draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return drawText
-    
+
 def renderDepartureStation(departureStation, xOffset):
     def draw(draw, *_):
         text = departureStation
@@ -209,7 +208,7 @@ def renderDepartureStation(departureStation, xOffset):
     return draw
 
 def renderDots(draw, *_):
-    text = ".  .  ."
+    text = ""
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
 def loadData(apiConfig, journeyConfig, rows):
@@ -220,9 +219,6 @@ def loadData(apiConfig, journeyConfig, rows):
     try:
         departures, stationName = loadDeparturesForStation(
             journeyConfig, apiConfig["apiKey"], rows)
-        
-        # Debugging: Print the retrieved departures
-        print(f"Departures: {departures}")
 
         if departures is None:
             return False, False, stationName
@@ -233,7 +229,6 @@ def loadData(apiConfig, journeyConfig, rows):
         print("Error: Failed to fetch data from OpenLDBWS")
         print(err.__context__)
         return False, False, journeyConfig['outOfHoursName']
-
 
 def drawStartup(device, width, height):
     virtualViewport = viewport(device, width=width, height=height)
@@ -375,6 +370,15 @@ def drawSignage(device, width, height, data):
 
     return virtualViewport
 
+def update_data_in_background(config, device, widgetWidth, widgetHeight, rows):
+    """Function to update data in the background and refresh display."""
+    while True:
+        data = loadData(config["transportApi"], config["journey"], rows)
+        if data[0] != False:
+            virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
+            virtual.refresh()
+        time.sleep(config["refreshTime"])
+
 try:
     serial = spi(port=0)
     device = ssd1322(serial, mode="1", rotate=2)
@@ -392,34 +396,37 @@ try:
 
     rows = "10"  # Define the number of rows of departure data you want to fetch
 
+    # Validate and parse screenBlankHours
+    blankHours = []
+    if HOURS_PATTERN.match(config['transportApi']['screenBlankHours']):
+        blankHours = [int(x) for x in config['transportApi']['screenBlankHours'].split('-')]
+
+    # Initial data load
     data = loadData(config["transportApi"], config["journey"], rows)
 
     if data[0] == False:
         virtual = drawBlankSignage(
             device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
     else:
-        virtual = drawSignage(device, width=widgetWidth,
-                              height=widgetHeight, data=data)
+        virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
 
     timeAtStart = time.time()
     timeNow = time.time()
 
+    # Start background thread for data updates
+    update_thread = threading.Thread(target=update_data_in_background, args=(config, device, widgetWidth, widgetHeight, rows))
+    update_thread.daemon = True
+    update_thread.start()
+
     while True:
-        if(timeNow - timeAtStart >= config["refreshTime"]):
-            # display NRE attribution while data loads
-            virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
-            virtual.refresh()
-
-            data = loadData(config["transportApi"], config["journey"], rows)
-            if data[0] == False:
-                virtual = drawBlankSignage(
-                    device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
-            else:
-                virtual = drawSignage(device, width=widgetWidth, height=widgetHeight, data=data)
-
-            timeAtStart = time.time()
-
         timeNow = time.time()
+
+        # Check if within blank hours and clear the screen if necessary
+        if len(blankHours) == 2 and isRun(blankHours[0], blankHours[1]):
+            device.clear()  # This line clears the screen
+            time.sleep(10)  # Sleep for 10 seconds before checking again
+            continue
+
         virtual.refresh()
 
 except KeyboardInterrupt:
