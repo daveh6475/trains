@@ -1,6 +1,6 @@
 # UK Train Departure Display 
 
-## NOW UPDATED TO USE [Real Time Trains API](https://www.realtimetrains.co.uk/about/developer/) !!
+## NOW UPDATED TO USE Open LDWBS !!
 
 
 This has been done because Transport API now has draconian usage limitations, the free tier is now down to 30 API calls a day from 1000! 
