@@ -192,7 +192,6 @@ def ProcessDepartures(journeyConfig, APIOut):
                 prepareServiceMessage(thisDeparture["operator"]),
                 prepareCarriagesMessage(thisDeparture["carriages"])
             )
-        # print("the " + thisDeparture["aimed_departure_time"] + " calls at " + thisDeparture["calling_at_list"])
 
         Departures[servicenum] = thisDeparture
 
@@ -209,11 +208,6 @@ def loadDeparturesForStation(journeyConfig, apiKey, rows):
 
     if rows is None:
         raise ValueError("The number of rows to fetch must be specified")
-
-    # Debugging: Print the values to ensure they are not None
-    print(f"departureStation: {journeyConfig['departureStation']}")
-    print(f"apiKey: {apiKey}")
-    print(f"rows: {rows}")
 
     destinationStation = journeyConfig["destinationStation"]
     filterCrs = f"<ldb:filterCrs>{destinationStation}</ldb:filterCrs>" if destinationStation else ""
