@@ -1,16 +1,21 @@
-{
+
   "journey": {
-    "departureStation": "",
+    "departureStation": "VIC",
     "destinationStation": null,
-    "timeOffset": "",
+    "individualStationDepartureTime": true,
+    "outOfHoursName": "",
+    "timeOffset": "0",
     "stationAbbr": {
       "International": "Intl."
-    }
+    },
+    "screen1Platform": "",
+    "screen2Platform": ""
   },
   "refreshTime": 180,
+  "showDepartureNumbers": false,
   "transportApi": {
     "appId": "",
-    "apiKey": "",
+    "apiKey": "", #enter NR API key here
     "operatingHours": "0-23"
   }
 }
