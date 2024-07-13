@@ -215,9 +215,10 @@ def renderDots(draw, *_):
     text = ""
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
-def loadData(apiConfig, journeyConfig, rows):
+def loadData(apiConfig: dict[str, Any], journeyConfig: dict[str, Any], rows: str) -> Tuple[Any, Any, str]:
+    """Loads departure data from the API."""
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if isRun(runHours[0], runHours[1]) == False:
+    if not isRun(runHours[0], runHours[1]):
         return False, False, journeyConfig['outOfHoursName']
 
     try:
