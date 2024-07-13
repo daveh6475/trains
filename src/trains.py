@@ -202,24 +202,33 @@ def ProcessDepartures(journeyConfig, APIOut):
 
 def loadDeparturesForStation(journeyConfig, apiKey, rows):
     if journeyConfig["departureStation"] == "":
-        raise ValueError(
-            "Please configure the departureStation environment variable")
+        raise ValueError("Please configure the departureStation environment variable")
 
     if apiKey is None:
-        raise ValueError(
-            "Please configure the apiKey environment variable")
+        raise ValueError("Please configure the apiKey environment variable")
 
-    APIRequest = """
+    if rows is None:
+        raise ValueError("The number of rows to fetch must be specified")
+
+    # Debugging: Print the values to ensure they are not None
+    print(f"departureStation: {journeyConfig['departureStation']}")
+    print(f"apiKey: {apiKey}")
+    print(f"rows: {rows}")
+
+    destinationStation = journeyConfig["destinationStation"]
+    filterCrs = f"<ldb:filterCrs>{destinationStation}</ldb:filterCrs>" if destinationStation else ""
+
+    APIRequest = f"""
         <x:Envelope xmlns:x="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ldb="http://thalesgroup.com/RTTI/2017-10-01/ldb/" xmlns:typ4="http://thalesgroup.com/RTTI/2013-11-28/Token/types">
         <x:Header>
-            <typ4:AccessToken><typ4:TokenValue>""" + apiKey + """</typ4:TokenValue></typ4:AccessToken>
+            <typ4:AccessToken><typ4:TokenValue>{apiKey}</typ4:TokenValue></typ4:AccessToken>
         </x:Header>
         <x:Body>
             <ldb:GetDepBoardWithDetailsRequest>
-                <ldb:numRows>""" + rows + """</ldb:numRows>
-                <ldb:crs>""" + journeyConfig["departureStation"] + """</ldb:crs>
-                <ldb:timeOffset>""" + journeyConfig["timeOffset"] + """</ldb:timeOffset>
-                <ldb:filterCrs>""" + journeyConfig["destinationStation"] + """</ldb:filterCrs>
+                <ldb:numRows>{rows}</ldb:numRows>
+                <ldb:crs>{journeyConfig["departureStation"]}</ldb:crs>
+                <ldb:timeOffset>{journeyConfig["timeOffset"]}</ldb:timeOffset>
+                {filterCrs}
                 <ldb:filterType>to</ldb:filterType>
                 <ldb:timeWindow>120</ldb:timeWindow>
             </ldb:GetDepBoardWithDetailsRequest>
