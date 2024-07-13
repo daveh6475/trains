@@ -3,7 +3,7 @@ import sys
 import time
 import json
 import requests
-
+import re
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
@@ -14,9 +14,8 @@ from open import isRun
 from typing import Any, List, Tuple
 from luma.core.interface.serial import spi, noop
 from luma.oled.device import ssd1322
-from luma.core.virtual import viewport, snapshot
 from luma.core.sprite_system import framerate_regulator
-import socket, re, uuid
+import socket, uuid
 
 global toc
 DISPLAY_WIDTH = 256
@@ -87,7 +86,6 @@ def renderCallingAt(draw, *_):
     _, _, bitmap = cachedBitmapText(stations, font)
     draw.bitmap((0, 0), bitmap, fill="yellow")
 
-
 bitmapRenderCache = {}
 
 def cachedBitmapText(text, font):
@@ -147,7 +145,6 @@ def renderStations(stations):
 
     return drawText
 
-
 def renderTime(draw, width, *_):
     rawTime = datetime.now().time()
     hour, minute, second = str(rawTime).split('.')[0].split(':')
@@ -188,7 +185,6 @@ def renderPoweredBy(xOffset):
 
     return drawText
 
-
 def renderNRE(xOffset):
     def drawText(draw, *_):
         text = "National Rail Enquiries"
@@ -196,14 +192,13 @@ def renderNRE(xOffset):
 
     return drawText
 
-
 def renderName(xOffset):
     def drawText(draw, *_):
         text = "UK Train Departure Display"
         draw.text((int(xOffset), 0), text=text, font=fontBold, fill="yellow")
 
     return drawText
-    
+
 def renderDepartureStation(departureStation, xOffset):
     def draw(draw, *_):
         text = departureStation
@@ -215,10 +210,9 @@ def renderDots(draw, *_):
     text = ""
     draw.text((0, 0), text=text, font=fontBold, fill="yellow")
 
-def loadData(apiConfig: dict[str, Any], journeyConfig: dict[str, Any], rows: str) -> Tuple[Any, Any, str]:
-    """Loads departure data from the API."""
+def loadData(apiConfig, journeyConfig, rows):
     runHours = [int(x) for x in apiConfig['operatingHours'].split('-')]
-    if not isRun(runHours[0], runHours[1]):
+    if isRun(runHours[0], runHours[1]) == False:
         return False, False, journeyConfig['outOfHoursName']
 
     try:
@@ -234,7 +228,6 @@ def loadData(apiConfig: dict[str, Any], journeyConfig: dict[str, Any], rows: str
         print("Error: Failed to fetch data from OpenLDBWS")
         print(err.__context__)
         return False, False, journeyConfig['outOfHoursName']
-
 
 def drawStartup(device, width, height):
     virtualViewport = viewport(device, width=width, height=height)
@@ -398,7 +391,7 @@ try:
     if HOURS_PATTERN.match(config['transportApi']['screenBlankHours']):
         blankHours = [int(x) for x in config['transportApi']['screenBlankHours'].split('-')]
 
-    data = loadData(config["transportApi"], config["journey"], rows, config["transportApi"]["operatingHours"])
+    data = loadData(config["transportApi"], config["journey"], rows)
 
     if data[0] == False:
         virtual = drawBlankSignage(
@@ -424,7 +417,7 @@ try:
             virtual = drawStartup(device, width=widgetWidth, height=widgetHeight)
             virtual.refresh()
 
-            data = loadData(config["transportApi"], config["journey"], rows, config["transportApi"]["operatingHours"])
+            data = loadData(config["transportApi"], config["journey"], rows)
             if data[0] == False:
                 virtual = drawBlankSignage(
                     device, width=widgetWidth, height=widgetHeight, departureStation=data[2])
@@ -434,11 +427,6 @@ try:
             timeAtStart = time.time()
 
         virtual.refresh()
-
-except KeyboardInterrupt:
-    pass
-except ValueError as err:
-    print(f"Error: {err}")
 
 except KeyboardInterrupt:
     pass
