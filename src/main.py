@@ -3,6 +3,7 @@ import sys
 import time
 import json
 import requests
+
 from datetime import datetime
 from PIL import ImageFont, Image, ImageDraw
 from helpers import get_device, AnimatedObject, RenderText, Animation, AnimationSequence, move_object, scroll_left, scroll_up, ObjectRow, reset_object
@@ -33,28 +34,17 @@ def makeFont(name, size):
 def format_hhmm(timestamp: str) -> str:
     return f"{timestamp[0:2]}:{timestamp[2:4]}"
 
-def renderDepartureDetails(departure, font, pos):
+def renderDestination(departure, font, pos):
     departureTime = departure["aimed_departure_time"]
     destinationName = departure["destination_name"]
-    serviceMessage = departure.get("service_message", "")
-    carriagesMessage = departure.get("carriages_message", "")
 
     def drawText(draw, *_):
-        y_offset = 0
-        train = f"{departureTime}  {destinationName}"
+        if config["showDepartureNumbers"]:
+            train = f"{pos}  {departureTime}  {destinationName}"
+        else:
+            train = f"{departureTime}  {destinationName}"
         _, _, bitmap = cachedBitmapText(train, font)
-        draw.bitmap((0, y_offset), bitmap, fill="yellow")
-        y_offset += 10
-        
-        if serviceMessage:
-            _, _, bitmap = cachedBitmapText(serviceMessage, font)
-            draw.bitmap((0, y_offset), bitmap, fill="yellow")
-            y_offset += 10
-        
-        if carriagesMessage:
-            _, _, bitmap = cachedBitmapText(carriagesMessage, font)
-            draw.bitmap((0, y_offset), bitmap, fill="yellow")
-            y_offset += 10
+        draw.bitmap((0, 0), bitmap, fill="yellow")
 
     return drawText
 
@@ -227,14 +217,19 @@ def loadData(apiConfig, journeyConfig):
     if isRun(runHours[0], runHours[1]) == False:
         return False, False, journeyConfig['outOfHoursName']
 
-    departures, stationName = loadDeparturesForStation(
-        journeyConfig, apiConfig["apiKey"])
+    try:
+        departures, stationName = loadDeparturesForStation(
+            journeyConfig, apiConfig["apiKey"], rows)
 
-    if (departures == None):
-        return False, False, stationName
+        if departures is None:
+            return False, False, stationName
 
-    firstDepartureDestinations = departures[0]["calling_at_list"]
-    return departures, firstDepartureDestinations, stationName
+        firstDepartureDestinations = departures[0]["calling_at_list"]
+        return departures, firstDepartureDestinations, stationName
+    except requests.RequestException as err:
+        print("Error: Failed to fetch data from OpenLDBWS")
+        print(err.__context__)
+        return False, False, journeyConfig['outOfHoursName']
 
 
 def drawStartup(device, width, height):
@@ -332,85 +327,11 @@ def drawSignage(device, width, height, data):
 
     firstFont = font
 
-    def renderDestination(departure, font, pos):
-        departureTime = departure["aimed_departure_time"]
-        destinationName = departure["destination_name"]
-        def drawText(draw, *_):
-            train = f"{departureTime}  {destinationName}"
-            _, _, bitmap = cachedBitmapText(train, font)
-            draw.bitmap((0, 0), bitmap, fill="yellow")
-        return drawText
-
-    def renderServiceStatus(departure):
-        def drawText(draw, width, *_):
-            train = ""
-
-            if departure["expected_departure_time"] == "On time":
-                train = "On time"
-            elif departure["expected_departure_time"] == "Cancelled":
-                train = "Cancelled"
-            elif departure["expected_departure_time"] == "Delayed":
-                train = "Delayed"
-            else:
-                if isinstance(departure["expected_departure_time"], str):
-                    train = 'Exp ' + departure["expected_departure_time"]
-
-                if departure["aimed_departure_time"] == departure["expected_departure_time"]:
-                    train = "On time"
-
-            w, _, bitmap = cachedBitmapText(train, font)
-            draw.bitmap((width - w, 0), bitmap, fill="yellow")
-        return drawText
-
-    def renderPlatform(departure):
-        def drawText(draw, *_):
-            if "platform" in departure:
-                platform = "Plat " + departure["platform"]
-                if departure["platform"].lower() == "bus":
-                    platform = "BUS"
-                _, _, bitmap = cachedBitmapText(platform, font)
-                draw.bitmap((0, 0), bitmap, fill="yellow")
-        return drawText
-
-    def renderCallingAt(draw, *_):
-        stations = "Calling at: "
-        _, _, bitmap = cachedBitmapText(stations, font)
-        draw.bitmap((0, 0), bitmap, fill="yellow")
-
-    def renderStationsWithServiceAndCarriages(stations, departure):
-        serviceMessage = departure.get("service_message", "")
-        carriagesMessage = departure.get("carriages_message", "")
-        def drawText(draw, *_):
-            global stationRenderCount, pauseCount, pixelsLeft, pixelsUp, hasElevated
-            if len(stations) == stationRenderCount - 5:
-                stationRenderCount = 0
-            stationsText = stations + " " + serviceMessage + " " + carriagesMessage
-            txt_width, txt_height, bitmap = cachedBitmapText(stationsText, font)
-            if hasElevated:
-                draw.bitmap((pixelsLeft - 1, 0), bitmap, fill="yellow")
-                if -pixelsLeft > txt_width and pauseCount < 8:
-                    pauseCount += 1
-                    pixelsLeft = 0
-                    hasElevated = 0
-                else:
-                    pauseCount = 0
-                    pixelsLeft = pixelsLeft - 1
-            else:
-                draw.bitmap((0, txt_height - pixelsUp), bitmap, fill="yellow")
-                if pixelsUp == txt_height:
-                    pauseCount += 1
-                    if pauseCount > 20:
-                        hasElevated = 1
-                        pixelsUp = 0
-                else:
-                    pixelsUp = pixelsUp + 1
-        return drawText
-
     rowOneA = snapshot(width - w - pw - 5, 10, renderDestination(departures[0], firstFont, '1st'), interval=config["refreshTime"])
     rowOneB = snapshot(w, 10, renderServiceStatus(departures[0]), interval=10)
     rowOneC = snapshot(pw, 10, renderPlatform(departures[0]), interval=config["refreshTime"])
     rowTwoA = snapshot(callingWidth, 10, renderCallingAt, interval=config["refreshTime"])
-    rowTwoB = snapshot(width - callingWidth, 10, renderStationsWithServiceAndCarriages(firstDepartureDestinations, departures[0]), interval=0.02)
+    rowTwoB = snapshot(width - callingWidth, 10, renderStations(firstDepartureDestinations), interval=0.02)
 
     if len(departures) > 1:
         rowThreeA = snapshot(width - w - pw, 10, renderDestination(departures[1], font, '2nd'), interval=config["refreshTime"])
