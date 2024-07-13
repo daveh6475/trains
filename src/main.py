@@ -217,6 +217,10 @@ def loadData(apiConfig, journeyConfig):
     if isRun(runHours[0], runHours[1]) == False:
         return False, False, journeyConfig['outOfHoursName']
 
+    # set rows to 10 (max allowed) to get as many departure as poss
+    # leaving as a variable so this can be updated if the API does
+    rows = "10"
+
     try:
         departures, stationName = loadDeparturesForStation(
             journeyConfig, apiConfig["apiKey"], rows)
@@ -387,7 +391,7 @@ try:
     pauseCount = 0
     loop_count = 0
 
-    data = loadData(config["transportApi"], config["journey"])
+    data = loadData(config["transportApi"], config["journey"], rows)
 
     if data[0] == False:
         virtual = drawBlankSignage(
